@@ -3,6 +3,8 @@ function loadFileonLoad(){
     const params = Object.fromEntries(urlSearchParams.entries());
     var file=params["file"];
     var magic=params["magic"];
+    var mode=params["mode"];
+    var idsvg=params["id"];
 
     if(magic){
         magicTask();
@@ -12,17 +14,26 @@ function loadFileonLoad(){
     if( file ){
       //console.log("SI tiene file");
       document.getElementById("urlFileImport").value=file;
+      if(mode=='admin' && idsvg>0){
+        document.getElementById("btnUpdateSVGadmin").setAttribute("url", file);
+        document.getElementById("btnUpdateSVGadmin").show();
+        console.log('mode admin');
+      }
       importFromURL();
     }
 }
 
 function importFromLocalDisk(){
     var input = document.getElementById("pathFileImport");
+    if (input.files.length == 0) {
+        helpTip("You must first select a file, then click the Import button.");
+        return;
+    }
     var filename=input.files[0].name;
     var ext = filename.split('.').pop();
     ext =  ext.toLowerCase();
-    if( ext!="svg" && ext!="jpg" && ext!="jpeg" && ext!="png" && ext!="gif"  && ext!="bmp"  && ext!="webp" ){
-        Dialog("Image Error", "The selected file is not an image.<br>Supported formats: <b>SVG</b> JPG, JPEG, PNG, GIF, BMP, WEBP", "OKI" );
+    if( ext!="svg" && ext!="jpg" && ext!="jpeg" && ext!="png" && ext!="gif"  && ext!="bmp"  && ext!="webp" && ext!="avif" ){
+        Dialog("Image Error", "The selected file is not an image.<br>Supported formats: <b>SVG</b> JPG, JPEG, PNG, GIF, BMP, WEBP, AVIF", "OKI" );
         return false;
     }
     if(ext=="svg"){
@@ -54,7 +65,7 @@ function showImportFileIMG(txt, w, h){
     var newID=createID("image");
     var posX=(_workSetup['width']-Nsize['width'])/2; 
     var posY=(_workSetup['height']-Nsize['height'])/2;           
-    var strImg="<image id='"+newID+"' class='cosito' width='"+Nsize['width']+"' height='"+Nsize['height']+"' x='"+posX+"' y='"+posY+"' xlink:href='"+txt+"' ></image>";
+    var strImg="<image id='"+newID+"' class='cosito' width='"+Nsize['width']+"' height='"+Nsize['height']+"' x='"+posX+"' y='"+posY+"' xlink:href='"+txt+"' preserveAspectRatio='none' ></image>";
     _hnd['svgHandler'].insertAdjacentHTML( "beforeend", strImg );
 }
 
@@ -72,6 +83,7 @@ function importFromURL(callback){
             showImportFileIMG(url, img.width, img.height);
             closeModal('frmOpenDocument');
         }else{
+            // TODO
             fetch( "https://artdraw.org/cnc/loadFile.php?f="+url )
             .then(response => response.text())
             .then(data =>{
@@ -156,10 +168,14 @@ function svg2Blob(type){
     var e=document.getElementById("svgWorkerArea");
     var copy=e.cloneNode(false);
     copy.setAttributeNS(null, "viewBox", "0 0 "+_workSetup['width']+" "+_workSetup['height'] );
+    copy.removeAttribute("worksetup");
     copy.style.background='white';
-    [...document.querySelectorAll(".cosito, .gPath, #svgWorkerArea defs")].forEach((element, index, array) => {
+    [...document.querySelectorAll("#svgWorkerArea path")].forEach((element, index, array) => {
         if( element.id!="defsdoc" && element.id!="patternBool" ){
-            flattenSimple(element.id);  
+            if(element.tagName=="path"){
+                flattenSimple(element.id);
+                compressPath(element.id, 2, true );
+            }              
         }                 
     });
     [...document.querySelectorAll(".cosito, .gPath, #svgWorkerArea defs")].forEach((element, index, array) => {
@@ -171,6 +187,14 @@ function svg2Blob(type){
 
     var file = new Blob([copy.outerHTML], {type: type});
     return file;
+}
+
+function blob2String(blob, callback) {
+    var reader = new FileReader();
+    reader.onload = function (event) {
+        callback(event.target.result);
+    };
+    reader.readAsText(blob);
 }
 
 function svg2Text(_background, _w, _h ){
@@ -222,13 +246,23 @@ function importImages(input){
 
             canvas.width=Nsize['width'];
             canvas.height=Nsize['height'];
+            ctx.fillStyle = 'rgba(0, 0, 0, 0)';           
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, 0, 0, Nsize['width'], Nsize['height']);
 
-            var newID=createID("image");
-            var posX=(_workSetup['width']-Nsize['width'])/2; 
-            var posY=(_workSetup['height']-Nsize['height'])/2;           
-            var strImg="<image id='"+newID+"' class='cosito' width='"+Nsize['width']+"' height='"+Nsize['height']+"' x='"+posX+"' y='"+posY+"' xlink:href='"+canvas.toDataURL()+"' ></image>";
-            _hnd['svgHandler'].insertAdjacentHTML( "beforeend", strImg );
+            canvas.toBlob(function (blob) {                
+                var readerz = new FileReader();
+                readerz.onload = function () {
+                    var base64zip = readerz.result;                    
+                    var newID=createID("image");
+                    var posX=(_workSetup['width']-Nsize['width'])/2; 
+                    var posY=(_workSetup['height']-Nsize['height'])/2;           
+                    var strImg="<image id='"+newID+"' class='cosito' width='"+Nsize['width']+"' height='"+Nsize['height']+"' x='"+posX+"' y='"+posY+"' xlink:href='"+base64zip+"' preserveAspectRatio='none' ></image>";
+                    _hnd['svgHandler'].insertAdjacentHTML( "beforeend", strImg );
+                };
+                readerz.readAsDataURL(blob);
+            }, 'image/png', 0.7);
+            
         }
         img.src = e.target.result;
     };
@@ -244,9 +278,10 @@ function showTabs(event){
     removeClassFromSelection("#importShapesList .tablinks", "active");
     event.target.toggleClass("active");
     var folder=event.target.getAttribute("folder");
-    document.getElementById("shpFrames").innerHTML  = "<center><img src='https://artdraw.org/svg/images/preload2.gif'></center>";
+    document.getElementById("shpFrames").innerHTML  = "<center><img src='../assets/img/preload2.gif'></center>";
     var formData = new FormData();
     formData.append('folder', folder);
+    // TODO
     fetch('https://artdraw.org/images/shp/load.php', {
         method: 'POST',
         body: formData,
@@ -368,6 +403,20 @@ function cleanSVGtxt(text){
 
             els.forEach(element => {
                 if( element.outerHTML!='undefined' && element.outerHTML!=null ){
+                    
+
+                    var children = element.querySelectorAll("*"); 
+                    children.forEach(child => {
+                        var chid=child.id;
+                        styles='';
+                        styles+=getCSSrValue(styleR, "#"+chid );
+                        child.classList.forEach(function(value) {
+                            styles+=getCSSrValue(styleR, "."+value );
+                        }); 
+                        child.setAttribute("style", styles);
+                    });
+
+                    
                     var t=element.id;
                     styles='';
                     styles+=getCSSrValue(styleR, "#"+t );
@@ -379,17 +428,41 @@ function cleanSVGtxt(text){
             });
         }
     }
-    //clean tags
+    //clean tags root & childs level
     els.forEach( function(element, index) {
-        var display=element.getAttribute("display");
+        var computedStyle = getComputedStyle(element);
+        var display = computedStyle.getPropertyValue('display');
         var xsx=element.getAttribute("fill-opacity");
-        //console.log("IMP: "+element.tagName+" id:"+element.id+" display:"+display);
 
         if( isGraphSVGe(element)==false || display=="none" )  {
             els.splice(index, 1);
-        }           
+        }
+        
+        var children = element.querySelectorAll("*"); 	
+        children.forEach( (child, indexc) => {
+            //...
+        });
         
     });
+
+    //remove tags
+    els.forEach(element => {
+      const metadataElements = element.querySelectorAll('metadata');
+      metadataElements.forEach(metadataElement => {
+        metadataElement.remove();
+      });
+      
+      const allDescendants = element.querySelectorAll('*');
+      allDescendants.forEach(descendant => {
+        const metadataDescendants = descendant.querySelectorAll('metadata');
+        metadataDescendants.forEach(metadataDescendant => {
+          metadataDescendant.remove();
+        });
+      });
+    });
+    
+
+
     //default colors
     els.forEach( function(element, index) {
         if( fillColorSVG!=null ){
@@ -512,12 +585,6 @@ function renderSVGtxt(text, perWidth){
     var groupImp=groupElements2("importsvg", 0, idtmp);
     groupImp.classList="cosito";
 
-    /*var bb=transformedBoundingBox(idtmp);
-    var widthPer = perWidth || 0.98;
-    var Nsize=scaleImage( bb.width, bb.height, _workSetup['width']*widthPer, _workSetup['height']*widthPer );
-    var posX=(_workSetup['width']-Nsize['width'])/2; 
-    var posY=(_workSetup['height']-Nsize['height'])/2; */    
-
     removeClassFromSelection(".importsvg.grouped", "importsvg");
     for (var i = 0; i < text['defs'].length; i++) {
         var idef=text['defs'][i].id;
@@ -526,9 +593,6 @@ function renderSVGtxt(text, perWidth){
         }
     } 
 
-    /*var elsel=document.getElementById(idtmp);
-    elsel.scale(Nsize['width'], Nsize['height']);
-    elsel.moveTo(posX, posY);*/
 }
 
 function getCSSrValue(rCSS, selector){
@@ -659,7 +723,7 @@ function masterUpload(){
             formData.append('tagen', tagen);
             formData.append('tages', tages);
             formData.append('svg', svgtxt);
-
+// TODO
             const request = new XMLHttpRequest();
             request.open("POST", "https://artdraw.org/querys/svg/uploadMaster.php", true);
             request.onreadystatechange = () => {
@@ -690,6 +754,66 @@ function masterUpload(){
 
 }
 
+function MCKupdateSVGadmin(){
+    var f=svg2Text('white');
+    var url=event.target.getAttribute("url");
+    if(!url){
+        Dialog( "ERROR", "Missing URL", "OKI" );
+        return;
+    }
+    document.getElementById("exportPreload").style="display:block";
+
+    async function getImageANDsend() {
+        try {
+            var t=svg2Text( "rgb(255,255,255)" );
+            const base64Image = await SVG2PNG(t, 0, "rgba(255,255,255,1)");
+
+            // TODO
+            const xhr = new XMLHttpRequest();  
+            xhr.addEventListener("load", transferComplete);
+            xhr.addEventListener("error", transferFailed);
+            xhr.open("POST", 'https://artdraw.org/querys/svg/adminUpdateSVG.php', true); 
+            xhr.setRequestHeader('Content-type', 'application/json; charset=UTF-8');
+            xhr.send(
+                JSON.stringify({
+                    url : url,
+                    img : base64Image,
+                    file : f
+                })
+            );
+
+            function transferComplete(event){
+                //if( silent==true )return;
+                console.log(xhr.responseText);
+                var response = JSON.parse(xhr.responseText);        
+                try { var rta = JSON.parse( JSON.stringify(response) );  }
+                catch(err) {
+                    console.log(err);
+                    Dialog( "ERROR", "Error posting image.<br>Try again", "OKI" );
+                    document.getElementById("exportPreload").style="display:none";
+                    return;
+                }
+                Dialog( rta.STATUS, rta.MSG, "OKI" );
+        
+                if(rta.STATUS=="OK"){
+                    document.getElementById("exportPreload").style="display:none";
+                }
+        
+                closeModal("frmPublisWeb");
+                document.getElementById("exportPreload").style="display:none";
+            }
+            function transferFailed(event){
+                console.log(event);        
+            }
+
+        } catch (error) {
+          console.error("Hubo un error al convertir el SVG a PNG:", error);
+        }
+    }      
+    getImageANDsend();  
+    
+}
+
 function publishWeb(silent){
     var f=svg2Text('white');
     var name=document.getElementById("exportFileName").value;
@@ -716,51 +840,67 @@ function publishWeb(silent){
     }
     document.getElementById("exportPreload").style="display:block";
 
-    const xhr = new XMLHttpRequest();  
-    xhr.addEventListener("load", transferComplete);
-    xhr.addEventListener("error", transferFailed);
-    xhr.open("POST", 'https://artdraw.org/querys/svg/publishWeb.php', true); 
-    xhr.setRequestHeader('Content-type', 'application/json; charset=UTF-8');
-    xhr.send(
-        JSON.stringify({
-            name : name,
-            description : description,
-            album : album,
-            tagen : tagen,
-            uid : uid,
-            mail : Cookies.get('SVGuserMail'),
-            hash : Cookies.get('SVGuserHash'),
-            file : f
-        })
-    );
+    async function getImageANDsend() {
+        try {
+            var t=svg2Text( "rgb(255,255,255)" );
+            const base64Image = await SVG2PNG(t, 0, "rgba(255,255,255,1)");
+            //console.log("La conversión SVG a PNG ha terminado:");
+            //console.log(base64Image);
 
-    function transferComplete(event){
-        if( silent==true )return;
-        //console.log(xhr.responseText);
-        var response = JSON.parse(xhr.responseText);        
-        try { var rta = JSON.parse( JSON.stringify(response) );  }
-        catch(err) {
-            closeModal("frmPublisWeb");
-            console.log(err);
-            Dialog( "ERROR", "Error posting image.<br>Try again", "OKI" );
-            document.getElementById("exportPreload").style="display:none";
-            return;
+            // TODO
+            const xhr = new XMLHttpRequest();  
+            xhr.addEventListener("load", transferComplete);
+            xhr.addEventListener("error", transferFailed);
+            xhr.open("POST", 'https://artdraw.org/querys/svg/publishWeb.php', true); 
+            xhr.setRequestHeader('Content-type', 'application/json; charset=UTF-8');
+            xhr.send(
+                JSON.stringify({
+                    name : name,
+                    description : description,
+                    album : album,
+                    tagen : tagen,
+                    img : base64Image,
+                    uid : uid,
+                    mail : Cookies.get('SVGuserMail'),
+                    hash : Cookies.get('SVGuserHash'),
+                    file : f
+                })
+            );
+
+            function transferComplete(event){
+                if( silent==true )return;
+                console.log(xhr.responseText);
+                var response = JSON.parse(xhr.responseText);        
+                try { var rta = JSON.parse( JSON.stringify(response) );  }
+                catch(err) {
+                    closeModal("frmPublisWeb");
+                    console.log(err);
+                    Dialog( "ERROR", "Error posting image.<br>Try again", "OKI" );
+                    document.getElementById("exportPreload").style="display:none";
+                    return;
+                }
+                Dialog( rta.STATUS, rta.MSG, "OKI" );
+        
+                if(rta.STATUS=="OK"){
+                    closeModal("frmPublisWeb");
+                    document.getElementById("exportPreload").style="display:none";
+                    document.getElementById("exportUID").value=rta.ID;
+                    window.open(rta.URL, '_blank');
+                }
+        
+                closeModal("frmPublisWeb");
+                document.getElementById("exportPreload").style="display:none";
+            }
+            function transferFailed(event){
+                console.log(event);        
+            }
+
+        } catch (error) {
+          console.error("Hubo un error al convertir el SVG a PNG:", error);
         }
-        Dialog( rta.STATUS, rta.MSG, "OKI" );
-
-        if(rta.STATUS=="OK"){
-            closeModal("frmPublisWeb");
-            document.getElementById("exportPreload").style="display:none";
-            document.getElementById("exportUID").value=rta.ID;
-            window.open(rta.URL, '_blank');
-        }
-
-        closeModal("frmPublisWeb");
-        document.getElementById("exportPreload").style="display:none";
-    }
-    function transferFailed(event){
-        console.log(event);        
-    }
+    }      
+    getImageANDsend();  
+    
 }
 
 function svg2png(idsvg){
@@ -799,7 +939,7 @@ function svg2png(idsvg){
             canvas.getContext('2d').drawImage(img, 0, 0);
             
             var newID=createID("image");            
-            var strImg="<image id='"+newID+"' class='cosito' width='"+bb.width+"' height='"+bb.height+"' x='0' y='0' xlink:href='"+canvas.toDataURL()+"' ></image>";
+            var strImg="<image id='"+newID+"' class='cosito' width='"+bb.width+"' height='"+bb.height+"' x='0' y='0' xlink:href='"+canvas.toDataURL()+"' preserveAspectRatio='none' ></image>";
             _hnd['svgHandler'].insertAdjacentHTML( "beforeend", strImg );
             console.log("img load");
         };
@@ -1054,4 +1194,33 @@ function makeblob(dataURL) {
     }
 
     return new Blob([uInt8Array], { type: contentType });
+}
+
+function AutoSaveBrowser(verbose=false) {
+    var svgContent = svg2Blob("text");
+    blob2String(svgContent, function (svgContentString) {
+        localStorage.clear(); 
+        try{
+            localStorage.setItem('ArtDraw', svgContentString);
+            if(verbose) Dialog( "Save in Browser", "Drawing stored.", "OK" );
+        }catch{
+            if(verbose) Dialog( "Save in Browser", "Insufficient space to store.", "OK" );
+        } 
+    });    
+}
+
+function RestoreFromLocalStorage(verbose=false) {
+    try {
+        var svgContent = localStorage.getItem('ArtDraw');
+        if (svgContent) {
+            showImportFileSVG(svgContent);
+
+            if(verbose) Dialog("Restore from Browser", "Drawing restored.", "OK");
+        } else {
+            if(verbose) Dialog("Restore from Browser", "No saved drawing found.", "OK");
+        }
+    } catch (error) {
+        console.error('Error al intentar restaurar desde localStorage:', error);
+        if(verbose)Dialog("Restore from Browser", "An error occurred while restoring.", "OK");
+    }
 }

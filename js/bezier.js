@@ -1,4 +1,4 @@
-// math-inlining.
+// math-inlining. https://pomax.github.io/bezierjs/
 const { abs, cos, sin, acos, atan2, sqrt, pow } = Math;
 
 // cube root function yielding real roots

@@ -17,13 +17,13 @@ DOC['evtMsg']=_evtMsg;
 DOC['workSetup']=_workSetup;
 DOC['selector']=_selector;
 DOC['ctrlZ']=_ctrlZ;
-_workSetup['width']=600; _workSetup['height']=600; _workSetup['zeroPos']=99; _workSetup['zeroPosZ']="top"; _workSetup['units']='mm'; _workSetup['zSafe']=10;_workSetup['showGuide']=6;_workSetup['guides']=false;
+_workSetup['width']=600; _workSetup['height']=600; _workSetup['LANG']='en'; _workSetup['units']='mm'; _workSetup['showGuide']=6;_workSetup['guides']=false;
 _evtMsg['isDragScreen']=false; _evtMsg['dragSP']=null; _rdius=3;  _evtMsg['isDrawSelector']=false; _evtMsg['dragSPsel']=null; _workSetup['fzoom']=0; 
-_evtMsg['jxWork']=false; _evtMsg['mousePOS']=null; _evtMsg['busy']=false; _evtMsg['selectorShape']=null; _evtMsg['selectorPos']=null;_evtMsg['clientX']=0;_evtMsg['clientX']=0;
+_evtMsg['jxWork']=false; _evtMsg['mousePOS']=null; _evtMsg['busy']=false; _evtMsg['selectorShape']=null; _evtMsg['selectorPos']=null;_evtMsg['clientX']=0;_evtMsg['clientX']=0; _evtMsg['zoomController']=false;
 _evtMsg['selectorShapeSVG']=null; _evtMsg['selectorShapePoints']=null; _evtMsg['selectorShapePointsTT']=0; _evtMsg['waitFor']=null; _evtMsg['tmp']=null; _evtMsg['keycode']=null;
-_evtMsg['selNodeIndex']=null; _evtMsg['lastID']=null; _selector['SELTOOL']='SELROJO'; _selector['SELTOOLM']=''; _selector['HND']=null;_selector['propSel']=[];
+_evtMsg['selNodeIndex']=null; _evtMsg['lastID']=null; _selector['SELTOOL']='SELROJO'; _selector['SELTOOLM']=''; _selector['HND']=null;_selector['propSel']=[]; _selector['drawHandBuffer']=8;
 _evtMsg['isEditNodes']=false; _urlDownFile=null;_useHelp=true; DEFS=''; IS_USER=false; PUBWEB={'name':'', 'description':'', 'album':'', 'tagen':''};
-var contextMenu, shareMenu, auth2, basura=0;
+var contextMenu, shareMenu, auth2, basura=0, detectorMoveNet=null, detectorBlazePose=null;
 var _FILTERS=[
 '<filter id="[idfilter]" x="-100%" y="-100%" width="300%" height="300%" class="preview"><feGaussianBlur mod="m1" in="SourceAlpha" stdDeviation="[stdDeviation;range;5;0;30;m1;0.5]" result="desenfoque" /><feOffset in="desenfoque" mod="m2" dx="[dx;range;0;-30;30;m2;1]" dy="[dy;range;0;-30;30;m2;1]" result="sombra" /><feMerge><feMergeNode in="sombra" /><feMergeNode in="SourceGraphic" /></feMerge></filter>',
 '<filter id="[idfilter]" x="-100%" y="-100%" width="300%" height="300%" class="preview"><feOffset in="SourceGraphic" mod="m1" dx="[dx;range;3;-30;30;m1;1]" dy="[dy;range;3;-30;30;m1;1]" /><feGaussianBlur mod="m2" stdDeviation="[stdDeviation;range;5;0;20;m2;0.5]" result="blur" /><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>',
@@ -347,13 +347,24 @@ SVGElement.prototype.moveTo = SVGElement.prototype.moveTo ||  function(x, y) {
     if(this.tagName=="g"){
         flattenSimple(this.id);
         var bb=transformedBoundingBox(this.id);
-        [...this.querySelectorAll("path")].forEach((element, index, array) => {
+        [...this.querySelectorAll("path, image")].forEach((element, index, array) => {
             var bbs=transformedBoundingBox(element.id);
             var dx=x+(bbs.x-bb.x);
             var dy=y+(bbs.y-bb.y);
             //var mx=x+dx
             element.moveTo(dx, dy);
         });
+        return;
+    }
+    
+    if(this.tagName=="image"){
+        var xElemz = subjx( "#"+this.id );
+        var xDrag = xElemz.drag();
+        var bbs=transformedBoundingBox(this.id);
+        var dx=x-bbs.x;
+        var dy=y-bbs.y;
+        xDrag.exeDrag( { dx:dx, dy:dy } );
+        xDrag.disable();        
         return;
     }
 
@@ -381,6 +392,14 @@ SVGElement.prototype.move = SVGElement.prototype.move ||  function(x, y) {
         });
         return;
     }
+    
+    if(this.tagName=="image"){
+        var xElemz = subjx( "#"+this.id );
+        var xDrag = xElemz.drag();
+        xDrag.exeDrag( { dx:x, dy:y } );
+        xDrag.disable();        
+        return;
+    }
 
     var d=this.getAttributeNS(null, "d"), transform=this.getAttributeNS(null, "transform");
     if(transform!=null && transform!='undefined'){
@@ -392,6 +411,7 @@ SVGElement.prototype.move = SVGElement.prototype.move ||  function(x, y) {
     //console.log("x:"+x+" y:"+y+" transform:"+transform+" rta:"+rta);
 };
 SVGElement.prototype.scale = SVGElement.prototype.scale ||  function(sx, sy) {
+    //sx y sy son las medidas a las que desea convertir el objeto
     if(this.tagName=="g"){
         flattenSimple(this.id);
         var bb=transformedBoundingBox(this.id);
@@ -399,6 +419,12 @@ SVGElement.prototype.scale = SVGElement.prototype.scale ||  function(sx, sy) {
         sy=sy/bb.height;
         this.setAttributeNS(null, "transform", "scale("+sx+","+sy+")" );
         flattenSimple(this.id);
+        return;
+    }
+    
+    if(this.tagName=="image"){
+        this.setAttributeNS(null, "width", sx );  
+        this.setAttributeNS(null, "height", sy );    
         return;
     }
     
@@ -499,6 +525,26 @@ SVGElement.prototype.dGet = SVGElement.prototype.dGet ||  function(rarray) {
 SVGElement.prototype.dSet = SVGElement.prototype.dSet ||  function(d) {
     this.setAttributeNS(null, "d", d);
 };
+SVGElement.prototype.width = SVGElement.prototype.width ||  function(width) {
+    var bb=transformedBoundingBox(this.id);
+    if (typeof width === 'undefined' || width=='') {        
+        return bb.width;
+      } else {
+        this.scale( width, bb.height );        
+      }
+      return width;
+};
+SVGElement.prototype.height = SVGElement.prototype.height ||  function(height) {
+    var bb=transformedBoundingBox(this.id);
+    if (typeof height === 'undefined' || height=='') {        
+        return bb.height;
+      } else {
+        this.scale( bb.width, height );        
+      }
+      return height;
+};
+
+
 
 
 Array.prototype.orderBy = function(selector, desc = false) {
@@ -520,11 +566,11 @@ function SVGnew(id, _root, attrs){
     element.setAttribute( 'xmlns', "http://www.w3.org/2000/svg");
     element.setAttribute('version', '1.1');
     element.setAttribute( 'xmlns:xlink', 'http://www.w3.org/1999/xlink');
-    element.setAttribute( 'xmlns:artdraw', 'https://artdraw.org');
+    // element.setAttribute( 'xmlns:artdraw', 'https://artdraw.org'); // TODO
     element.setAttributeNS( null, 'viewBox', '-25 -25 750 750');
     element.setAttribute( 'width', '100%');
     element.setAttribute( 'height', '100%');
-    element.setAttribute( 'style', 'background: rgb(155, 155, 155);');
+    element.setAttribute( 'style', 'background:#27272799;');
     Object.keys(attrs).forEach(key => {
         element.setAttribute(key, attrs[key] );
     });
@@ -662,7 +708,7 @@ function drawTextOpenType(_fontURL, _text, _id, _callback){
     const draw = (font) => {
         createShape(font, _text);
     }               
-    opentype.load( "https://artdraw.org/svg" + _fontURL, (err, font) => draw(font));
+    opentype.load( "https://artdraw.org/svg" + _fontURL, (err, font) => draw(font)); // TODO
 }
 
 function selectText(){
@@ -751,7 +797,7 @@ function drawTextGoogleFonts( font, text ){
     var family = arrayUrl[arrayUrl.length - 1];
     family = family.split(".")[0];
     family = family.replace("-", " ");
-
+// TODO
     var style="@font-face { font-family: '"+family+"'; src: url(https://artdraw.org/svg"+font+"); }";
     _STYLES.append(style);
 
@@ -819,6 +865,14 @@ function getPointAtLength(_id, _length){
     return point;
 }
 
+function pointInShape(id, x, y){
+    var e=document.getElementById(id);
+    var point = _hnd['svgHandler'].createSVGPoint();
+    point.x = x;
+    point.y = y;
+    return e.isPointInFill( point );
+}
+
 function cursorPoint(evt, element) {
     pHandler.x = evt.clientX; 
     pHandler.y = evt.clientY;
@@ -848,6 +902,8 @@ function mouseMoveAreaWork(evt) {
 
 function fourCartesian(_axis, _value, _mode){
     _value=Number(_value);
+    return _value;
+
     if( _mode==0 ){
         if( _workSetup['zeroPos']==99 ) {
             if(_axis=='x')return _value;
@@ -948,7 +1004,7 @@ function transformedBoundingBox(id){
       //https://stackoverflow.com/questions/10623809/get-bounding-box-of-element-accounting-for-its-transform
       if(checkID(id)==false )return;
       var el=document.getElementById(id);
-
+        if(el.tagName=='metadata')return null;
       //console.log( el.tagName+" > "+el.id );
       var bb  = el.getBBox(),
           svg = el.ownerSVGElement,
@@ -1180,6 +1236,24 @@ function unGroupElements(_id, _childClass ){
     }
     var parent = document.getElementById(_id);
     var childrens = parent.childNodes;
+    /*[...childrens].forEach((element, index, array) =>{
+        if( element.tagName=="text" || element.tagName=="image"   ){
+            var copy=element.cloneNode(true);
+            var transformp=parent.getAttributeNS(null, "transform");
+            if(transformp==null)transformp='';
+            var transformc=element.getAttributeNS(null, "transform");
+            if(transformc==null)transformc='';
+            copy.setAttributeNS(null, "transform", transformc+transformp);
+            copy.classList.add("cosito");
+            copy.classList.remove("grouped");
+            element.remove();
+            _hnd['svgHandler'].appendChild(copy);
+        }
+    });*/
+    flattenSimple(_id);
+
+    var parent = document.getElementById(_id);
+    var childrens = parent.childNodes;
     //console.log("total childs:"+childrens.length);
     [...childrens].forEach((element, index, array) => {         
         if( isDomEntity(element)==true ){
@@ -1189,7 +1263,9 @@ function unGroupElements(_id, _childClass ){
                 element.id=id;
             }
             if (typeof _childClass !== 'undefined' && _childClass)element.setAttribute("class", _childClass );
-            flattenSimple( id );
+            if(element.tagName=="path"){
+                flattenSimple( id );
+            } 
             _hnd['svgHandler'].appendChild(element);
         }                
     });
@@ -1240,6 +1316,7 @@ function bolita(x,y, radius, cl){
     circle.setAttributeNS(null, 'r', radius);
     circle.setAttributeNS(null, 'style', 'fill: '+cl+'; stroke: black; stroke-width: 0.2px;' );
     circle.setAttribute("class", 'cosito' );
+    circle.setAttribute("id", createID("bolita") );
     _hnd['svgHandler'].appendChild( circle ); 
     return circle;
 }
@@ -1254,8 +1331,11 @@ function restoreKeys(){
     closeDrawPoly('');
     _selector['SELTOOL']='SELROJO'; 
     _evtMsg['selectorShapeSVG']=null;
+    document.onmouseup = null;
+    document.onmousemove = null;
     document.onmousedown=null;
     removeClassFromSelection("#btnHandLine", "sel");
+    removeAllFromSelection(".dragWarp");
 
     HideSelector();
     removeClassFromSelection(".cosito.selectable", "selectable");
@@ -1274,6 +1354,7 @@ function restoreKeys(){
             }
         }
     });
+    document.body.style.cursor = 'default';
 }
 
 function busyON(author) {     
@@ -1288,6 +1369,145 @@ function busyOFF() {
 const distancer = (p1, p2) => Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
 const distance = (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1);
 const midpoint = (x1, y1, x2, y2) => [(x1 + x2) / 2, (y1 + y2) / 2];
+function findIntersectionProyect(x1, y1, x2, y2, x3, y3, x4, y4) {
+    //encuentra la interseccion de 2 lineas, no importa si estas no se cruzan. las proyecta hasta hallarla
+    var slope1 = (y2 - y1) / (x2 - x1);
+    var slope2 = (y4 - y3) / (x4 - x3);
+    
+    if (slope1 === slope2) {
+      // Las líneas son paralelas, no se cruzan
+      return null;
+    }
+    
+    var b1 = y1 - slope1 * x1;
+    var b2 = y3 - slope2 * x3;
+    
+    var xIntersect = (b2 - b1) / (slope1 - slope2);
+    var yIntersect = slope1 * xIntersect + b1;
+    
+    return { x: xIntersect, y: yIntersect };
+}
+function findIntersection(x1, y1, x2, y2, x3, y3, x4, y4) {
+    //la interseccion debe estar dentro de los 2 segmentos definidos. no proyecta las lineas
+    var denominator = ((y4 - y3) * (x2 - x1)) - ((x4 - x3) * (y2 - y1));
+  
+    if (denominator === 0) {
+      // Las líneas son paralelas o coincidentes, no se cruzan
+      return null;
+    }
+  
+    var ua = (((x4 - x3) * (y1 - y3)) - ((y4 - y3) * (x1 - x3))) / denominator;
+    var ub = (((x2 - x1) * (y1 - y3)) - ((y2 - y1) * (x1 - x3))) / denominator;
+  
+    if (ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1) {
+      var xIntersect = x1 + (ua * (x2 - x1));
+      var yIntersect = y1 + (ua * (y2 - y1));
+      return { x: xIntersect, y: yIntersect };
+    } else {
+      // Las líneas se cruzan fuera de los segmentos definidos
+      return null;
+    }
+}
+function rotateLine(seg, centerX, centerY, angle) {
+    // rota la linea sobre el punto tantos angulos
+    if(angle==0)return seg;
+    var relX1 = seg.x1 - centerX;
+    var relY1 = seg.y1 - centerY;
+    var relX2 = seg.x2 - centerX;
+    var relY2 = seg.y2 - centerY;
+  
+    // Calcular el ángulo en radianes
+    var radianAngle = (angle * Math.PI) / 180;
+  
+    // Aplicar la fórmula de rotación en 2D a los puntos relativos
+    var rotatedRelX1 = relX1 * Math.cos(radianAngle) - relY1 * Math.sin(radianAngle);
+    var rotatedRelY1 = relX1 * Math.sin(radianAngle) + relY1 * Math.cos(radianAngle);
+    var rotatedRelX2 = relX2 * Math.cos(radianAngle) - relY2 * Math.sin(radianAngle);
+    var rotatedRelY2 = relX2 * Math.sin(radianAngle) + relY2 * Math.cos(radianAngle);
+  
+    // Calcular las coordenadas absolutas en relación al centro de rotación
+    var newX1 = rotatedRelX1 + centerX;
+    var newY1 = rotatedRelY1 + centerY;
+    var newX2 = rotatedRelX2 + centerX;
+    var newY2 = rotatedRelY2 + centerY;
+  
+    return { x1:newX1, y1:newY1, x2:newX2, y2:newY2  };
+}
+function angle2lines(x1, y1, x2, y2, x3, y3) {
+    // calcula angulo interno entre 2 lineas unidas en pto x2, y2 0 ... 180 no sirve mucho
+    var ux = x2 - x1;
+    var uy = y2 - y1;
+    var vx = x3 - x2;
+    var vy = y3 - y2;
+  
+    // Cálculo de las magnitudes de los vectores u y v
+    var magnitudU = Math.sqrt(ux * ux + uy * uy);
+    var magnitudV = Math.sqrt(vx * vx + vy * vy);
+  
+    // Cálculo del producto escalar de los vectores u y v
+    var productoEscalar = ux * vx + uy * vy;
+  
+    // Cálculo del ángulo en radianes usando la fórmula del producto escalar
+    var anguloRadianes = Math.acos(productoEscalar / (magnitudU * magnitudV));
+  
+    // Conversión del ángulo a grados
+    var anguloGrados = anguloRadianes * (180 / Math.PI);
+  
+    return anguloGrados;
+}
+function getAngle(y, x) {
+    //  0, 0 es el pto central return: 0 360
+    var angle = Math.atan2(-x, -y) * 180/Math.PI - 90;
+    return angle < 0 ? 360 + angle : angle;  // Ensure positive angle
+}
+function getPointOnLine(x1, y1, x2, y2, percentage) {
+    //dame un punto sobre la linea al 30% 0.3 desde el inicio
+    var dx = x2 - x1;
+    var dy = y2 - y1;
+    var lineLength = Math.sqrt(dx * dx + dy * dy);
+  
+    var targetDistance = lineLength * percentage;
+  
+    var ratio = targetDistance / lineLength;
+    var targetX = x1 + (dx * ratio);
+    var targetY = y1 + (dy * ratio);
+  
+    return { x: targetX, y: targetY };
+}
+function extendLinePoint(sg, distance, point=2) {
+    var currentDistance = Math.hypot(sg.x2 - sg.x1, sg.y2 - sg.y1);
+    var ratio = distance / currentDistance;
+    var dx = (sg.x2 - sg.x1) * ratio;
+    var dy = (sg.y2 - sg.y1) * ratio;
+    if(point==2){
+        sg.x2 += dx;
+        sg.y2 += dy;
+    }else{
+        sg.x1 -= dx;
+        sg.y1 -= dy;
+    }
+    
+    //console.log(sg);
+    return sg;
+}
+function resizeLine(sg, length) {
+    var currentDistance = Math.hypot(sg.x2 - sg.x1, sg.y2 - sg.y1);
+    var ratio = length / currentDistance;
+    sg.x2 = sg.x1 + (sg.x2 - sg.x1) * ratio;
+    sg.y2 = sg.y1 + (sg.y2 - sg.y1) * ratio;
+    //console.log(sg);
+    return sg;
+}
+function moveLine(sg, newX, newY) {
+    var dx = newX - sg.x1;
+    var dy = newY - sg.y1;
+    
+    sg.x1 = newX;
+    sg.y1 = newY;
+    sg.x2 += dx;
+    sg.y2 += dy;
+    return sg;
+}
 
 function moveUp(element) {
   if(element.previousElementSibling)
@@ -1310,7 +1530,7 @@ function combinePaths(_class, _deleteOrigin, _createElement, _return){
     if( ttSel==1 ){
         var isOK=isShapeCombined(document.querySelectorAll(".cosito.selectable")[0].id);
         if(isOK==false){
-            Ayuda( "SPLIT: The selected shape is not merged !!" );
+            helpTip( "SPLIT: The selected shape is not merged !!" );
             return;
         }
         controlPointZ("iniDRR");
@@ -1328,6 +1548,7 @@ function combinePaths(_class, _deleteOrigin, _createElement, _return){
         flattenSimple(_id);
         var e=document.getElementById(_id);
         var d=e.getAttributeNS( null, 'd');
+        if(d==null)return;
         var dr=d.split('M');
         dr.forEach(function(item){
             //console.log(item.length);
@@ -1436,11 +1657,11 @@ function trunc(num, dec) {
     return Math.trunc(num * pow) / pow
 }
 
-function Ayuda(text){
+function helpTip(text){
     if(_useHelp==false)return;
     const regex = /@@/ig;
     text=text.replaceAll(regex, '<br>');
-    document.getElementById("AYUDA").show().innerHTML = text;
+    document.getElementById("helpTip").show().innerHTML = text;
 }
 
 function Confirm(title, msg, $true, $false, funCallback) { 
@@ -1799,6 +2020,32 @@ function path2ArraySimple(d, error ){
 
 }
 
+function compressPath(id, digits, apply ){ 
+    //return;   
+    var e=document.getElementById(id);
+    var d=e.getAttribute('d');
+    var r=SVGPATH(d);
+    r=r['segments'];    
+    var nd='' ;
+    for(var i=0; i<r.length-1; i++){
+        var s=r[i];
+        for(var j=0; j<s.length; j++){
+            if(j==0){
+                nd+=s[0]+" ";
+            }else{
+                nd+=s[j].toFixed(digits)+" ";
+            }
+        }                
+    }
+    nd=nd.trim();
+    console.log("id", id, d, "nd:",nd);
+    if(apply==true){
+        e.dSet(nd);
+        return;
+    }
+    return nd;
+}
+
 function loadScript(url, id, callback) {
     if (document.getElementById(id)) {
       return;
@@ -1813,4 +2060,815 @@ function loadScript(url, id, callback) {
     }
   
     document.body.appendChild(script);
-  }
+}
+
+function captureScreenshot(){
+    
+    const capture = async () => {
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        const video = document.createElement("video");
+      
+        try {
+            const bodyElement = document.querySelector('body');
+            bodyElement.style.cursor = 'none';
+            const captureOptions = {
+                video: {
+                  cursor: "hidden"
+                },
+                audio: false
+              };
+            const captureStream = await navigator.mediaDevices.getDisplayMedia(captureOptions);
+            video.srcObject = captureStream;
+            await new Promise((resolve) => {
+                video.onloadedmetadata = resolve;
+            });
+        
+            await new Promise((resolve) => setTimeout(resolve, 1000)); // Esperar 1 segundo
+            video.play();
+        
+            const displayWidth = window.innerWidth;
+            const displayHeight = window.innerHeight;
+            const screenLeft = window.screenLeft;
+            const screenTop = window.screenTop;
+            const windowLeft = window.outerWidth - window.innerWidth - screenLeft;
+            const windowTop = window.outerHeight - window.innerHeight - screenTop;
+        
+            canvas.width = displayWidth;
+            canvas.height = displayHeight;
+            context.drawImage(video, windowLeft, windowTop, displayWidth, displayHeight, 0, 0, displayWidth, displayHeight);
+        
+            const frame = canvas.toDataURL("image/png");
+            captureStream.getTracks().forEach(track => track.stop());
+        
+            if (window === window.top) {
+                const link = document.createElement("a");
+                link.href = frame;
+                link.download = "screenshot.png";
+                link.click();
+                bodyElement.style.cursor = 'default';
+            } else {
+                console.error("Error: La ventana de permisos fue capturada. No se guarda la captura.");
+                bodyElement.style.cursor = 'default';
+            }
+        } catch (err) {
+          console.error("Error: " + err);
+        }
+      };
+
+      capture();
+}
+
+function textHelp(txt, x, y){
+    var t=createSVGElement('text', false, createID('txtHelp') );
+    t.innerHTML=txt;
+    t.setAttribute("x", x);
+    t.setAttribute("y", y);
+    t.setAttribute("class", "txtHelp");
+    _hnd['workMain'].appendChild( t );
+}
+
+function updateLang(evt){
+    var langSel=document.querySelector("select[change=updateLang] option:checked").value;
+    if( langSel==_workSetup['LANG'] )return;
+
+    _workSetup['LANG']=langSel;
+    traslateGUI(langSel);
+    //console.log(evt);
+}
+
+function traslateGUI(lng){
+    var EN=[
+        ['#xinfoPanelHeader span', 'text', 'Selection'],
+        ['#lbltPosition', 'text', 'Position'],
+        ['#lbltSize', 'text', 'Size'],
+        ['#btnApplyTransform', 'text', "&nbsp; Apply &nbsp;"],
+        ['#btnRotateSel', 'data-title', 'Ratate & Duplicate Selection'],
+        ['#btnEditNodes', 'data-title', 'Bezier Edit Nodes'],
+        ['#btnRound', 'data-title', 'Border Round'],
+        ['#btnAlignT', 'data-title', 'Align Tool'],
+        ['#btnBoolean', 'data-title', 'Boolean Tool'],
+        ['#btnOutl', 'data-title', 'Border Outline'],
+        ['#btnTraceImage', 'data-title', 'Trace Image to Vectors'],
+        ['#btnColorManager', 'data-title', 'Color Manager'],
+        ['#btnToClip', 'data-title', 'Clip Mask Tool'],
+        ['#btnRough', 'data-title', 'Rough Style'],
+        ['#btnWaves', 'data-title', 'Waves & Mandalas'],
+        ['#btnFx', 'data-title', 'Filters & Effects'],
+        ['#btnSelect', 'data-title', 'Select Tool'],
+        ['#btnHandLine', 'data-title', 'Freehand Tool'],
+        ['#btnRect', 'data-title', 'Rect Tool'],
+        ['#btnEllipse', 'data-title', 'Oval Tool'],
+        ['#btnPoly', 'data-title', 'Polygon Tool'],
+        ['#btnText', 'data-title', 'Draw Text'],
+        ['#btnShapes', 'data-title', 'Gallery'],
+        ['#btnZoomBtn', 'data-title', 'Zoom Tool'],
+        ['#tpmnuWtxt + div', 'data-title', 'Document Width'],
+        ['#tpmnuHtxt + div', 'data-title', 'Document Height'],
+        ['#ttpObjectName', 'data-title', 'ID Object Name'],
+        ['#tpmnuSettings', 'data-title', 'Settings'],
+        ['#tpmnuWtxt', 'text', 'Width: '],
+        ['#tpmnuHtxt', 'text', 'Height: '],
+        ['#liGroup', 'data-title', 'Group / Ungroup'],
+        ['#liCombine', 'data-title', 'Combine / Uncombine'],
+        ['#liAlign', 'data-title', 'Align Guides'],
+        ['#tpmnuZ1', 'data-title', 'Bring front'],
+        ['#tpmnuZ2', 'data-title', 'Up one level'],
+        ['#tpmnuZ3', 'data-title', 'Down one level'],
+        ['#tpmnuZ4', 'data-title', 'Send back'],
+        ['#tpmnuZ1 span', 'text', 'Front'],
+        ['#tpmnuZ2 span', 'text', 'Forward'],
+        ['#tpmnuZ3 span', 'text', 'Backward'],
+        ['#tpmnuZ4 span', 'text', 'Back'],
+        ['#frmConfigEditor .modal-header h2', 'text', 'Editor Settings'],
+        ['#configEdLANG', 'text', 'Language'],
+        ['#configEdTheme', 'text', 'Editor Color Scheme'],
+        ['#frmOpenDocument .modal-header h2', 'text', 'Import Images & Vectors'],
+        ['#divOpenDocument td:nth-child(1) p', 'text', 'From local disk'],
+        ['#divOpenDocument td:nth-child(2) p', 'text', 'From URL'],
+        ['#frmOpenDocument .modal-footer p:nth-of-type(1)', 'text', 'You can import any type of image: <b>SVG</b> JPG, JPEG, PNG, GIF, BMP, WEBP, BASE64...'],
+        ['#frmOpenDocument .modal-footer p:nth-of-type(2)', 'text', 'Tip: For best results, first download the image to your computer and then import it.'],
+        ['#btnImportLocalDisk', 'text', '&nbsp; Import &nbsp;'],
+        ['#importFromURL', 'text', '&nbsp; Import &nbsp;'],
+        ['#btnNewDocument', 'text', 'New'],
+        ['#btnImportFile', 'text', 'Import File'],
+        ['#btnSaveFile', 'text', 'Download File SVG'],
+        ['#btnEsportPNG', 'text', 'Export Image PNG'],
+        ['#btnPublishWeb', 'text', 'Publish Web'],
+        ['#myWEBfiles', 'text', 'My Web Files..'],
+        ['#btnOpenImageNewTab', 'text', 'Print'],
+        ['#frmExportPNG .modal-header h2', 'text', 'Export Image PNG'],
+        ['#exPNGa3;#exPNGa7', 'text', 'Image Size'],
+        ['#exPNGa4;#exPNGa8', 'text', 'Width'],
+        ['#exPNGa5;#exPNGa9', 'text', 'Height'],
+        ['#exPNGa6 span;#exPNGa10 span', 'text', 'Preserve Aspect Ratio'],
+        ['#exportALLpng', 'text', '&nbsp; Export Document &nbsp;'],
+        ['#exportONLYpng', 'text', '&nbsp; Export Selection &nbsp;'],
+        ['#exPNGa1', 'text', 'Export ALL Document'],
+        ['#exPNGa2', 'text', 'Export ONLY Selection'],
+        ['#exPNGa11', 'text', 'Transparent Background'],
+        ['#exPNGa12', 'text', 'Margin Border'],
+        ['#pnlBool1', 'text', 'Booleans'],
+        ['label[for=booleanType1]', 'text', 'Difference'],
+        ['label[for=booleanType2]', 'text', 'XOR'],
+        ['label[for=booleanType3]', 'text', 'Intersection'],
+        ['label[for=booleanType4]', 'text', 'Union'],
+        ['label[for=booleanReduceNodes]', 'text', 'Reduce Nodes'],
+        ['label[for=booleanDeleteOriginal]', 'text', 'Delete original'],
+        ['#applyBoolean', 'text', '&nbsp; Apply &nbsp;'],
+        ['#pnlText1', 'text', 'Draw Text'],
+        ['#selectFontBtn', 'text', 'Select Font'],
+        ['#pnlText2', 'text', 'Simple'],
+        ['#pnlText3', 'text', 'Vector'],
+        ['#txt2path', 'placeholder', 'Enter text here...'],
+        ['#drawText', 'text', 'Create Text'],
+        ['#frmSelectFont .modal-header h2', 'text', 'Font Selector'],
+        ['#frmImportShapes .modal-header h2', 'text', 'Import Vector Images'],
+        ['#btnImport1Shape', 'text', '&nbsp; Import &nbsp;'],
+        ['#panelOffset div.bgLight span', 'text', 'Border Offset'],
+        ['label[for=offsetPath1]', 'text', 'Outward'],
+        ['label[for=offsetPath2]', 'text', 'Inwards'],
+        ['#pnlOffset1', 'text', 'Distance'],
+        ['label[for=offsetReduceNodes]', 'text', 'Reduce Nodes'],
+        ['label[for=offsetPathDel]', 'text', 'Delete Original'],
+        ['#applyOffset', 'text', 'Apply Offset'],
+        ['#panelRound div.bgLight span', 'text', 'Round Corners'],
+        ['#pnlRound1;#pnlRound4', 'text', 'Left'],
+        ['#pnlRound3;#pnlRound6', 'text', 'Right'],
+        ['#pnlRound2', 'text', 'TOP'],
+        ['#pnlRound5', 'text', 'BOTTOM'],
+        ['#pnlRound7', 'text', 'Delete Original'],
+        ['#applyRound', 'text', 'Round'],
+        ['#panelAlign div.bgLight span', 'text', 'Align Tool'],
+        ['#pnlAlign1', 'text', 'X move'],
+        ['#pnlAlign2', 'text', 'Y move'],
+        ['#applyAlign', 'text', 'Align'],
+        ['#panelArray div.bgLight span', 'text', 'Arrays Panel'],
+        ['#pnlArray3', 'text', 'Cols X '],
+        ['#pnlArray4;pnlArray6', 'text', 'Flip'],
+        ['#pnlArray5', 'text', 'Rows Y '],
+        ['#pnlArray7', 'text', 'Rotate '],
+        ['#pnlArray8', 'text', 'SpaceX'],
+        ['#pnlArray10', 'text', 'SpaceY'],
+        ['#pnlArray9;#pnlArray11', 'text', 'Odd'],
+        ['#pnlArray15', 'text', 'Create Array'],
+        ['#pnlArray12', 'text', 'Angle '],
+        ['#pnlArray13', 'text', 'Rotate'],
+        ['#pnlArray14', 'text', 'Rotate & Duplicate'],
+        ['#pnlArray16', 'data-title', '&nbsp; X-axis Columns &nbsp;'],
+        ['#pnlArray17', 'data-title', '&nbsp; X-axis Rows &nbsp;'],
+        ['selector', 'attr', 'text'],
+        ['selector', 'attr', 'text'],
+    ];
+
+    var ES=[
+        ['#xinfoPanelHeader span', 'text', 'Selección'],
+        ['#lbltPosition', 'text', 'Posición'],
+        ['#lbltSize', 'text', 'Tamaño'],
+        ['#btnApplyTransform', 'text', "&nbsp; Aplicar &nbsp;"],
+        ['#btnRotateSel', 'data-title', 'Rotar & Duplicar Selección'],
+        ['#btnEditNodes', 'data-title', 'Bezier Editar Nodos'],
+        ['#btnRound', 'data-title', 'Bordes Redondos'],
+        ['#btnAlignT', 'data-title', 'Herramienta Alinear'],
+        ['#btnBoolean', 'data-title', 'Operaciones Booleanas'],
+        ['#btnOutl', 'data-title', 'Expandir Bordes'],
+        ['#btnTraceImage', 'data-title', 'Vectorizar Imagen'],
+        ['#btnColorManager', 'data-title', 'Editor de Color'],
+        ['#btnToClip', 'data-title', 'Herramienta Clip Máscara'],
+        ['#btnRough', 'data-title', 'Estilo Mano Alzada'],
+        ['#btnWaves', 'data-title', 'Ondas & Mandalas'],
+        ['#btnFx', 'data-title', 'Filtros & Efectos'],
+        ['#btnSelect', 'data-title', 'Herramienta Seleccion'],
+        ['#btnHandLine', 'data-title', 'Herramienta Mano Alzada'],
+        ['#btnRect', 'data-title', 'Herramienta Rectangulo'],
+        ['#btnEllipse', 'data-title', 'Herramienta Ovalo'],
+        ['#btnPoly', 'data-title', 'Herramienta Poligono'],
+        ['#btnText', 'data-title', 'Dibujar Texto'],
+        ['#btnShapes', 'data-title', 'Galeria Prediseñados'],
+        ['#btnZoomBtn', 'data-title', 'Herramienta Zoom'],
+        ['#tpmnuWtxt + div', 'data-title', 'Ancho del documento'],
+        ['#tpmnuHtxt + div', 'data-title', 'Alto del documento'],
+        ['#ttpObjectName', 'data-title', 'ID Nombre del objeto'],
+        ['#tpmnuSettings', 'data-title', 'Configuración'],
+        ['#tpmnuWtxt', 'text', 'Ancho: '],
+        ['#tpmnuHtxt', 'text', 'Alto: '],
+        ['#liGroup', 'data-title', 'Agrupar / Desagrupar'],
+        ['#liCombine', 'data-title', 'Combinar / Descombinar'],
+        ['#liAlign', 'data-title', 'Guias de alineación'],
+        ['#tpmnuZ1', 'data-title', 'Traer al frente'],
+        ['#tpmnuZ2', 'data-title', 'Subir un nivel'],
+        ['#tpmnuZ3', 'data-title', 'Bajar un nivel'],
+        ['#tpmnuZ4', 'data-title', 'Enviar al fondo'],
+        ['#tpmnuZ1 span', 'text', 'Al frente'],
+        ['#tpmnuZ2 span', 'text', 'Adelante'],
+        ['#tpmnuZ3 span', 'text', 'Atras'],
+        ['#tpmnuZ4 span', 'text', 'Al fondo'],
+        ['#frmConfigEditor .modal-header h2', 'text', 'Panel Configuración'],
+        ['#configEdLANG', 'text', 'Idioma'],
+        ['#configEdTheme', 'text', 'Colores del Tema'],
+        ['#frmOpenDocument .modal-header h2', 'text', 'Importar Imagenes & Vectores'],
+        ['#divOpenDocument td:nth-child(1) p', 'text', 'Desde el disco local'],
+        ['#divOpenDocument td:nth-child(2) p', 'text', 'Desde una dirección URL'],
+        ['#frmOpenDocument .modal-footer p:nth-of-type(1)', 'text', 'Puede importar cualquier tipo de imagen: <b>SVG</b> JPG, JPEG, PNG, GIF, BMP, WEBP, BASE64...'],
+        ['#frmOpenDocument .modal-footer p:nth-of-type(2)', 'text', 'Tip: Para mejores resultados, primero descargue la imagen a su PC y despues importela.'],
+        ['#btnImportLocalDisk', 'text', '&nbsp; Importar &nbsp;'],
+        ['#importFromURL', 'text', '&nbsp; Importar &nbsp;'],
+        ['#btnNewDocument', 'text', 'Nuevo'],
+        ['#btnImportFile', 'text', 'Importar Archivo'],
+        ['#btnSaveFile', 'text', 'Descargar Archivo SVG'],
+        ['#btnEsportPNG', 'text', 'Exportar Imagen PNG'],
+        ['#btnPublishWeb', 'text', 'Publicar en la Web'],
+        ['#myWEBfiles', 'text', 'Mis Archivos Web..'],
+        ['#btnOpenImageNewTab', 'text', 'Imprimir'],
+        ['#frmExportPNG .modal-header h2', 'text', 'Exportar Imagen PNG'],
+        ['#exPNGa3;#exPNGa7', 'text', 'Tamaño de Imagen'],
+        ['#exPNGa4;#exPNGa8', 'text', 'Ancho'],
+        ['#exPNGa5;#exPNGa9', 'text', 'Alto'],
+        ['#exPNGa6 span;#exPNGa10 span', 'text', 'Mantener Relación de Aspecto'],
+        ['#exportALLpng', 'text', '&nbsp; Exportar Documento &nbsp;'],
+        ['#exportONLYpng', 'text', '&nbsp; Exportar Selección &nbsp;'],
+        ['#exPNGa1', 'text', 'Exportar TODO el Documento'],
+        ['#exPNGa2', 'text', 'Exportar SOLO la Selección'],
+        ['#exPNGa11', 'text', 'Fondo Transparente'],
+        ['#exPNGa12', 'text', 'Margen al Borde'],
+        ['#pnlBool1', 'text', 'Operaciones Booleanas'],
+        ['label[for=booleanType1]', 'text', 'Diferencia'],
+        ['label[for=booleanType2]', 'text', 'XOR'],
+        ['label[for=booleanType3]', 'text', 'Intersección'],
+        ['label[for=booleanType4]', 'text', 'Union'],
+        ['label[for=booleanReduceNodes]', 'text', 'Reducir Nodos'],
+        ['label[for=booleanDeleteOriginal]', 'text', 'Borrar Original'],
+        ['#applyBoolean', 'text', '&nbsp; Aplicar &nbsp;'],
+        ['#pnlText1', 'text', 'Dibujar Texto'],
+        ['#selectFontBtn', 'text', 'Seleccione Fuente'],
+        ['#pnlText2', 'text', 'Simple'],
+        ['#pnlText3', 'text', 'Vector'],
+        ['#txt2path', 'placeholder', 'Escriba un texto...'],
+        ['#drawText', 'text', 'Crear Texto'],
+        ['#frmSelectFont .modal-header h2', 'text', 'Seleccionar Fuente'],
+        ['#frmImportShapes .modal-header h2', 'text', 'Importar Vectores & Imagenes'],
+        ['#btnImport1Shape', 'text', '&nbsp; Importar &nbsp;'],
+        ['#panelOffset div.bgLight span', 'text', 'Expandir Bordes'],
+        ['label[for=offsetPath1]', 'text', 'Afuera'],
+        ['label[for=offsetPath2]', 'text', 'Dentro'],
+        ['#pnlOffset1', 'text', 'Distancia'],
+        ['label[for=offsetReduceNodes]', 'text', 'Reducir Nodos'],
+        ['label[for=offsetPathDel]', 'text', 'Borrar Original'],
+        ['#applyOffset', 'text', 'Applicar Offset'],
+        ['#panelRound div.bgLight span', 'text', 'Bordes Redondos'],
+        ['#pnlRound1;#pnlRound4', 'text', 'Izq.'],
+        ['#pnlRound3;#pnlRound6', 'text', 'Der.'],
+        ['#pnlRound2', 'text', 'ARRIBA'],
+        ['#pnlRound5', 'text', 'ABAJO'],
+        ['#pnlRound7', 'text', 'Borrar Original'],
+        ['#applyRound', 'text', 'Redondear'],
+        ['#panelAlign div.bgLight span', 'text', 'Herramienta Alinear'],
+        ['#pnlAlign1', 'text', 'Mover en X'],
+        ['#pnlAlign2', 'text', 'Mover en Y'],
+        ['#applyAlign', 'text', 'Alinear'],
+        ['#panelArray div.bgLight span', 'text', 'Arrays Panel'],
+        ['#pnlArray3', 'text', 'Cols X '],
+        ['#pnlArray4;pnlArray6', 'text', 'Flip'],
+        ['#pnlArray5', 'text', 'Filas Y '],
+        ['#pnlArray7', 'text', 'Rotar '],
+        ['#pnlArray8', 'text', 'DistX'],
+        ['#pnlArray10', 'text', 'DistY'],
+        ['#pnlArray9;#pnlArray11', 'text', 'Odd'],
+        ['#pnlArray15', 'text', 'Crear Array'],
+        ['#pnlArray12', 'text', 'Angulo '],
+        ['#pnlArray13', 'text', 'Rotar'],
+        ['#pnlArray14', 'text', 'Rotar & Duplicar'],
+        ['#pnlArray16', 'data-title', 'Columnas en el eje X'],
+        ['#pnlArray17', 'data-title', 'Filas en el eje Y'],
+        ['selector', 'attr', 'text'],
+    ];
+
+    var LANGSEL=ES;
+    if( lng=='es' )LANGSEL=ES;
+    if( lng=='en' )LANGSEL=EN;
+
+    LANGSEL.forEach(traslate);
+    function traslate(item) {
+        var selector=item[0];
+        var where=item[1];
+        var text=item[2];
+
+        if( selector.includes(';')==true ){
+            var selr = selector.split(';');
+            selr.forEach( (s) => {
+                var e=document.querySelector(s);
+                if( e!=null ){
+                    if(where=='text'){ 
+                    e.innerHTML=text;
+                    }else{
+                        e.setAttribute(where, text);
+                    }
+                }
+            });
+        }else{
+            var e=document.querySelector(selector);
+            if( e!=null ){
+                if(where=='text'){ 
+                e.innerHTML=text;
+                }else{
+                    e.setAttribute(where, text);
+                }
+            }
+        }
+
+                
+    }
+}
+
+function clipIt(){
+//https://codepen.io/qtizee/pen/bGNRpvr    
+    var elementIMG=document.querySelectorAll("image.selectable")[0];
+    var elementPath=document.querySelectorAll("path.selectable")[0];
+    if( elementIMG==null || elementPath==null ){
+        var title="Crop Image";
+        var msg="Select 2 objects at the same time:<br><ul><li>The image PNG or JPG to cut.</li><li>The cut vector.</li></ul><br>Obviously the vector must be on the image.";
+        Dialog(title, msg, "OK");
+        return;
+    }
+
+    var idimg = elementIMG.id;
+    var imgsrc=elementIMG.getAttribute("xlink:href");
+    var bbImg=getBBoxFromSelection( "#"+idimg );
+    
+    var idpath = elementPath.id;
+    flattenSimple(idpath);
+    var elementPath=document.querySelectorAll("path.selectable")[0];
+    var points=path2Poly(elementPath);
+    points=points.pointsOK;
+    var bbPath=getBBoxFromSelection( "#"+idpath );    
+
+    var canvas = document.createElement('canvas');
+    canvas.width = bbImg.width; 
+    canvas.height = bbImg.height; 
+    var context = canvas.getContext('2d');
+    context.strokeStyle='black';
+
+    var img = new Image();
+    img.src = imgsrc
+    img.onload = function() {
+        context.fillStyle = "rgba(0, 0, 0, 0)";
+        context.drawImage(img, 0, 0, canvas.width, canvas.height);
+        document.body.appendChild(canvas);
+        context.save();
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.fillStyle = "rgba(0, 0, 0, 0)";
+        context.beginPath();
+        context.moveTo(points[0][0] - bbImg.x, points[0][1] - bbImg.y );
+        for(var i=1; i<points.length; i++){
+            var px=points[i][0] - bbImg.x ;
+            var py=points[i][1] - bbImg.y ;
+            context.lineTo(px, py);
+        }
+        context.closePath();
+        context.clip();
+        context.drawImage(img, 0, 0, canvas.width, canvas.height);
+        context.restore();
+    
+        var c=document.createElement('canvas');
+        var cx=c.getContext('2d');
+        var width=bbPath.width;
+        var height=bbPath.height;
+        c.width=width;
+        c.height=height;    
+        cx.drawImage(canvas, bbPath.x - bbImg.x, bbPath.y - bbImg.y, bbPath.width, bbPath.height, 0, 0, width, height);
+
+        c.toBlob(function (blob) {                
+            var readerz = new FileReader();
+            readerz.onload = function () {
+                var base64zip = readerz.result;
+                var newID = createID("clip");
+                var strImg="<image id='"+newID+"' class='cosito' width='"+bbPath.width+"' height='"+bbPath.height+"' x='"+bbPath.x+"' y='"+bbPath.y+"' xlink:href='"+base64zip+"' preserveAspectRatio='none' ></image>";
+                _hnd['svgHandler'].insertAdjacentHTML( "beforeend", strImg );
+                canvas.remove();
+                
+            };
+            readerz.readAsDataURL(blob);
+        }, 'image/png' );
+
+        /*var clippedImage=new Image();
+        clippedImage.onload=function(){        
+            var newID = createID("clip");
+            var strImg="<image id='"+newID+"' class='cosito' width='"+bbPath.width+"' height='"+bbPath.height+"' x='"+bbPath.x+"' y='"+bbPath.y+"' xlink:href='"+c.toDataURL()+"' preserveAspectRatio='none' ></image>";
+            _hnd['svgHandler'].insertAdjacentHTML( "beforeend", strImg );
+            canvas.remove();
+        }
+        clippedImage.src=c.toDataURL();*/  
+    };
+}
+
+function poseFromImageLoad(){
+    if( detectorMoveNet==null || detectorBlazePose==null ){        
+        Ayuda("Wait a minute while the Neural Network loads");
+        loadScript("https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js", "scriptTensorFlow", async function(){
+            loadScript("https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection", "scriptPoseDetection", async function(){
+                var detectorConfigMVNT = {
+                    modelType: poseDetection.movenet.modelType.MULTIPOSE_LIGHTNING,
+                    enableTracking: true,
+                    trackerType: poseDetection.TrackerType.BoundingBox,
+                    enableSmoothing: true 
+                 };
+                 var detectorConfigBZP = {
+                    runtime: 'tfjs',
+                    enableSmoothing: true,
+                    modelType: "lite"
+                 };    
+                console.time('proceso');
+                await tf.setBackend('webgl');       
+                Ayuda("Neural Network => WEBGL Ready");
+                await tf.ready().then(() => {
+                    Ayuda("Neural Network TensorFlow Ready");
+                    poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, detectorConfigMVNT).then((detectorMoveNetOK) => {
+                            //console.log("MoveNet Ready", detectorMoveNetOK);
+                            Ayuda("Neural Network => MoveNet Ready");
+                            detectorMoveNet=detectorMoveNetOK;
+                            poseDetection.createDetector(poseDetection.SupportedModels.BlazePose, detectorConfigBZP).then((detectorBZPOK) => {
+                                detectorBlazePose=detectorBZPOK;                    
+                                //console.log('BlazePose Ready', detectorBZPOK);
+                                Ayuda("Neural Network => BlazePose Ready");
+                                console.timeEnd('proceso');
+                                var elementIMG=document.querySelectorAll("image.selectable")[0];
+                                if( elementIMG==null ){
+                                    var title="Neural Network Ready!";
+                                    var msg="<b>Extract Poses From Image</b><br>Select an Image and use the Extract Pose option.<br>";
+                                    Dialog(title, msg, "OK");
+                                    return;
+                                }else{
+                                    poseFromImage();
+                                }
+                            });
+                    });
+                    
+                });
+            
+            });
+        });
+    }else{
+        poseFromImage();
+    }
+}
+
+function poseFromImage(){
+    if( detectorMoveNet==null || detectorBlazePose==null ){
+        poseFromImageLoad();
+        return;
+    }
+    async function loadPose(img) {
+        var canvastmp, ctx, w=0, h=0;
+        var bbox = transformedBoundingBox(img.id);
+        var image = new Image();
+        image.crossOrigin = "anonymous";
+        
+
+        image.onload = function() {
+          var w=this.width;
+          var h=this.height;
+         
+          canvastmp = document.createElement('canvas');
+          canvastmp.width = bbox.width;
+          canvastmp.height = bbox.height;
+          ctx=canvastmp.getContext('2d', { willReadFrequently: true });
+          ctx.drawImage(this, 0, 0, bbox.width, bbox.height );
+          
+          async function TFloadPose(){                
+              detectorMoveNet.estimatePoses(canvastmp).then((posesOK) => {
+                    console.log('Poses: ', posesOK);
+                    for(var i=0; i<posesOK.length; i++){
+                          var rta=bboxPose(posesOK[i], canvastmp, ctx);
+                          var final=false;
+                          if(i==posesOK.length-1)final=true;
+                          if(posesOK[i].score>0.5){
+                              subPose(rta.canvas, i, true, rta.x, rta.y );                               
+                          }      
+                    }                    
+              });              
+          }
+          TFloadPose();
+          
+          function bboxPose(pose, canvas, ctx){
+            var xMax=-9999, xMin=9999, yMax=-9999, yMin=9999, w=0, h=0, wp=0, hp=0;    
+                for(var i = 0; i < pose.keypoints.length; i++) { 
+                    if( pose.keypoints[i].x > xMax )xMax=pose.keypoints[i].x;
+                    if( pose.keypoints[i].x < xMin )xMin=pose.keypoints[i].x;
+                    if( pose.keypoints[i].y > yMax )yMax=pose.keypoints[i].y;
+                    if( pose.keypoints[i].y < yMin )yMin=pose.keypoints[i].y;    
+                }
+                w=xMax-xMin;
+                h=yMax-yMin;
+                wp=w*0.125;
+                hp=h*0.125;
+                xMin=xMin-wp;  xMax=xMax+wp;  yMin=yMin-hp; yMax=yMax+hp;
+                if(xMin<0)xMin=0; if(xMax>canvas.width)xMax=canvas.width;
+                if(yMin<0)yMin=0; if(yMax>canvas.height)yMax=canvas.height;
+            
+                var imageData = ctx.getImageData(xMin, yMin, xMax - xMin, yMax - yMin);
+                var croppedCanvas = document.createElement("canvas");
+                croppedCanvas.width = imageData.width;
+                croppedCanvas.height = imageData.height;
+                var croppedContext = croppedCanvas.getContext("2d");
+                croppedContext.putImageData(imageData, 0, 0);
+                //var base64 = croppedCanvas.toDataURL("image/png");
+                //console.log(base64);
+                
+                return { canvas: croppedCanvas, x: xMin, y: yMin  };
+          }
+
+          function subPose(canvas, i, final, cx, cy){
+            var container = document.getElementById("wraperMain");
+            container.appendChild(canvas);
+            detectorBlazePose.estimatePoses(canvas).then((poseOK) => {
+                    console.log('Pose('+i+') ', cx, cy, poseOK[0]);
+                    drawPose( poseOK[0], 0.75, cx, cy );
+              });
+          }
+
+          function drawPose( pose, mul, cx, cy){
+            var kp=pose.keypoints;
+            var dh=distance( kp[11].x, kp[11].y, kp[12].x, kp[12].y  );
+            var dl=distance( kp[11].x, kp[11].y, kp[23].x, kp[23].y  );
+            var dok=dh > dl ? dh/3 : dl/4.5;
+            var ingle=findIntersection( kp[23].x, kp[23].y, kp[26].x, kp[26].y, kp[25].x, kp[25].y, kp[24].x, kp[24].y );
+            ingle.x=ingle.x+cx+bbox.x;
+            ingle.y=ingle.y+cy+bbox.y;
+            var f=bolita(ingle.x, ingle.y, dok/2, "red" );
+            f.setAttributeNS(null, "fill-opacity", 0.5);
+
+            console.log("radio dh:",dh," dl:",dl, " r:",dok );
+            for(var i = 0; i < pose.keypoints.length; i++) { 
+                var pos = pose.keypoints[i]; 
+                pos.x=pos.x+cx+bbox.x;
+                pos.y=pos.y+cy+bbox.y;
+                var score=pos.score;
+                var f=bolita(pos.x, pos.y, dok/2, "red" );
+                f.setAttributeNS(null, "fill-opacity", 0.5);
+            }
+            
+          }
+
+        };
+        image.src = img.getAttribute("xlink:href");
+                
+    }
+    
+    var imagep=document.querySelectorAll("image.selectable")[0];
+    if( imagep==null ){
+
+    }
+    loadPose(imagep);
+    console.log( "poseFromImage()" );
+}
+
+
+  function drawTreeA(steps, angle, starAngle, base=50, maxBranch=2,  gate=666, gateB=666, starX=0, starY=0, starI=0, seed=123456, useLeaves=true){
+    var branchs=0;
+    function drawTreeB(steps, angle, starAngle, base=50, maxBranch=2,  gate=666, gateB=666, starX=0, starY=0, starI=0, seed=123456, useLeaves=true){
+        var dir=starAngle, my=100000, stepBase=base/steps,  d="M", sideA=[], sideB=[], lineBranch=[];
+        var sg={ x1:200, y1:steps*25, x2:200, y2:(steps-1)*25 };
+        if(starX !=0 && starY!=0){
+            sg={ x1:starX, y1:starY, x2:starX, y2:starY-25 };
+        }
+        var normal=makeNormal(sg, starI );
+        sideA.push( [normal.x1, normal.y1] );
+        sideB.push( [normal.x2, normal.y2] );
+        lineBranch.push(sg);
+        /*var pnm=createSVGElement("path", true, createID("pnom") );
+        pnm.setAttribute("d", "M"+normal.x1+", "+normal.y1+" "+normal.x2+", "+normal.y2 );
+        _hnd['svgHandler'].appendChild( pnm );*/
+
+        d+=sg.x1+", "+sg.y1+" "+sg.x2+", "+sg.y2;
+
+        for( var i=starI; i<steps; i++){
+            //var z = Math.floor(Math.random() * 1000) + 1;
+            var z = randomWithSeed(seed, 1, 1000, true);
+            if( z>gate ){
+                //var zz = Math.floor(Math.random() * 1000) + 1;
+                var zz = randomWithSeed(seed, 1, 1000, true);
+                var isEven = z % 2 === 0;
+                dir = isEven ? angle : -angle;
+                if(zz>gateB && (maxBranch==0 || branchs<maxBranch) ){
+                    branchs++;
+                    drawTreeB(steps, angle, -dir, base, maxBranch, gate, gateB, sg.x1, sg.y1, i, seed, useLeaves );
+                }
+            }  
+
+            sg = moveLine( sg, sg.x2, sg.y2 );
+            sg = rotateLine( sg, sg.x1, sg.y1, dir );
+
+            var normal=makeNormal(sg, i);
+            sideA.push( [normal.x1, normal.y1] );
+            sideB.push( [normal.x2, normal.y2] );
+
+            if( sg.y2<my )my=sg.y2;
+            if( sg.y2>my ){
+                dir=-dir;
+                sg = rotateLine( sg, sg.x1, sg.y1, dir );
+            }
+            d+=" "+sg.x1+", "+sg.y1+" "+sg.x2+", "+sg.y2;
+            lineBranch.push(sg);
+        }
+        var b="M";
+        for( var i=0; i<sideA.length; i++ ){
+                b+=sideA[i][0]+", "+sideA[i][1]+" ";
+        }
+        for( var i=sideA.length-1; i>=0; i-- ){
+                b+=sideB[i][0]+", "+sideB[i][1]+" ";
+        }
+        var ar=createSVGElement("path", true, createID("tree") );
+        ar.setAttribute("d", b);
+        _hnd['svgHandler'].appendChild( ar );
+
+        if(useLeaves==true){
+            var h=makeBush(2);
+            h.moveTo(sg.x2, sg.y2);
+        }
+                
+        //console.log( lineBranch );
+        /*var r=createSVGElement("path", true, createID("tree") );
+        r.setAttribute("d", d);
+        _hnd['svgHandler'].appendChild( r );*/
+
+        function makeNormal(seg, i){
+            var normal = Object.assign({}, seg);
+            normal = rotateLine( normal, seg.x1, seg.y1, 90 );
+            var ws= (steps-i)*stepBase;
+            normal = resizeLine(normal, ws );
+            normal = extendLinePoint(normal, ws/2, 1 );
+            normal = resizeLine(normal, ws );
+            return normal; 
+        }
+    }   
+    drawTreeB(steps, angle, starAngle, base, maxBranch,  gate, gateB, starX, starY, starI, seed, useLeaves) ;  
+    
+    function makeBush(complex){
+        var el1=makeBlob4();
+        for( var i=0; i<complex; i++){
+            var el2=makeBlob4();
+            el2.classList.add("blob");
+            var len=el1.getTotalLength();
+            var z = Math.floor(Math.random() * len-1) + 1;
+            var point=el1.getPointAtLength(z);
+            var bb=transformedBoundingBox(el2.id);
+            
+            el2.moveTo( point.x-bb.width/2, point.y-bb.height/2 );
+            var m=booleanMerge("UNION", el1, el2, 0);
+            if( m.length>1 ){
+                console.log("xxxxxxxxxxxx:"+m.length);
+                if( m[0].getTotalLength() > m[1].getTotalLength() ){
+                    removeID(m[1].id);
+                    m=m[0]; 
+                }else{
+                    removeID(m[0].id);
+                    m=m[1]; 
+                }
+            }else{
+                m=m[0];
+            }             
+
+            var id=m.id;
+            removeID(el1.id); removeID(el2.id);
+            var el1=document.getElementById(id);
+        }
+        //m.classList.add("mezcla");
+        //var dok=reducePath(m.id, false);
+        //document.getElementById(m.id).dSet(dok);
+
+        
+        var leave=createSVGElement( "path", true, createID("leave") );
+        leave.classList.add("hoja");
+        leave.setAttribute("d", "M 0 25 C -25 11.5 -12.5 -3.5 0 -25 C 12.5 -3.5 25 12 0 25" );
+
+        for(var i=0; i<16; i++ ){
+            var copy = leave.cloneNode(true);            
+            var idcopy=createID("leave");
+            copy.id=idcopy;
+            _hnd['svgHandler'].appendChild( copy );
+            var bbc=transformedBoundingBox(idcopy);
+
+            var el1=document.getElementById(id);
+            var bb=transformedBoundingBox(el1.id);
+            var len=el1.getTotalLength();
+            var z = Math.floor(Math.random() * len-1) + 1;
+            var point=el1.getPointAtLength(z);
+
+            var pmx= point.x-(bb.x+bb.width/2), pmy=point.y-(bb.y+bb.height/2);
+            var angle=getAngle( pmx, pmy );
+
+            var nwx=point.x-bbc.width/2, nwy=point.y-35;
+            copy.moveTo( nwx, nwy );
+            copy.rotate( angle, point.x, point.y );
+            var m=booleanMerge("UNION", el1, copy, 0);
+            if( m.length>1 ){
+                console.log("yyyyyyyyyyyyyyyyy:"+m.length);
+                if( m[0].getTotalLength() > m[1].getTotalLength() ){
+                    removeID(m[1].id);
+                    m=m[0]; 
+                }else{
+                    removeID(m[0].id);
+                    m=m[1]; 
+                }
+            }else{
+                m=m[0];
+            } 
+            //var dok=reducePath(m.id, false);
+            //document.getElementById(m.id).dSet(dok);
+            var id=m.id;
+            removeID(el1.id); removeID(copy.id);
+            var el1=document.getElementById(id);
+        }
+        
+        var dok=reducePath(id, false);
+        document.getElementById(m.id).dSet(dok);
+        return el1;
+    }
+}
+ 
+function makeBlob4() {
+    function zp(n,x,y){ return { x:x+Math.floor(Math.random() * ((n*2)+1) ) -n, y:y+Math.floor(Math.random() * ((n*2)+1) ) -n}   ; }
+    function zpp(n,x,y,p){ 
+        var zx=Math.floor( Math.random() * n)+5 ;
+        if(p==1|| p==3){
+            if( Math.floor(Math.random() * 1000)>500 )zx=zx*-1;
+        }
+        var zy=Math.floor( Math.random() * n)+5 ;
+        if(p==2|| p==4){
+            if( Math.floor(Math.random() * 1000)>500 )zy=zy*-1;
+        }        
+        return { x1:x-zx, y1:y+zy, x2:x+zx, y2:y-zy  }   ; 
+    }
+    var p1= zp(20, 50, 100);
+    var p2= zp(20,  0, 50);
+    var p3= zp(20, 50, 0);
+    var p4= zp(20, 100, 50);
+
+    var pp1=zpp(21, p1.x, p1.y );
+    var pp2=zpp(21, p2.x, p2.y );
+    var pp3=zpp(21, p3.x, p3.y );
+    var pp4=zpp(21, p4.x, p4.y );
+       
+    var d = "M "+p1.x+" "+p1.y+
+    " C "+pp1.x1+" "+pp1.y1+" "+pp2.x1+" "+pp2.y1+" "+p2.x+" "+p2.y+
+    " C "+pp2.x2+" "+pp2.y2+" "+pp3.x1+" "+pp3.y1+" "+p3.x+" "+p3.y+
+    " C "+pp3.x2+" "+pp3.y2+" "+pp4.x2+" "+pp4.y2+" "+p4.x+" "+p4.y+
+    " C "+pp4.x1+" "+pp4.y1+" "+pp1.x2+" "+pp1.y2+" "+p1.x+" "+p1.y; 
+    
+    var e=createSVGElement("path", true, createID("branch") );
+    e.setAttribute("d", d);
+    _hnd['svgHandler'].appendChild( e );
+    return e;
+}
+
+function randomWithSeed(seed, min, max, round) {
+    var state = seed + 1;
+    var randomNum = (state * 9301 + 49297) % 233280 / 233280;
+  
+    if (round) {
+      return Math.round(min + randomNum * (max - min));
+    } 
+    return min + randomNum * (max - min);
+}
+
+

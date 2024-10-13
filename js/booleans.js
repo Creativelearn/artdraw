@@ -64,10 +64,7 @@ function booleanMergePreview(){
     var clipFillType=1;
     cpr.Execute( cliptype, solution_paths, subjectFillType, clipFillType);
     var rtaf=paths2string(solution_paths, scale) ;
-    drawSolutionPreview(rtaf, "blue", 1, "url(#patternBool)");     
-
-    e.setAttribute("stroke-linejoin", "round");
-    e.setAttribute("stroke-linecap", "round");
+    drawSolutionPreview(rtaf, "blue", 1, "url(#patternBool)");   
 }
 
 function booleanOffsetPreview(){
@@ -76,7 +73,7 @@ function booleanOffsetPreview(){
     if( document.querySelectorAll(".cosito.selectable").length==0){        
         return;
     }
-    var _typeOffset=document.querySelector("input[name='offsetPath']").checked;  
+    var _typeOffset=document.querySelector("input[name='offsetPath']:checked").value;  
     var offset=document.getElementById("offsetPathDis").value;
 
     offset=Math.abs(offset)*100;
@@ -175,7 +172,7 @@ function booleanMerge(tipeMerge, el1, el2, outMode){
     ClipperLib.JS.ScaleUpPaths(path2, scale);
     cpr.AddPaths(path2, ClipperLib.PolyType.ptClip, true);
    
-    console.log('merge.'+tipeMerge);   
+    //console.log('merge.'+tipeMerge);   
     var solution_paths = new ClipperLib.Paths();
     //ClipperLib.PolyFillType.pftEvenOdd=0 ClipperLib.PolyFillType.pftNonZero=1
     //ClipperLib.PolyFillType.pftPositive=2 ClipperLib.PolyFillType.pftNegative=3
@@ -184,8 +181,7 @@ function booleanMerge(tipeMerge, el1, el2, outMode){
     cpr.Execute( cliptype, solution_paths, subjectFillType, clipFillType);
     var rtaf=paths2string(solution_paths, scale) ;
     if(outMode==0){        
-        drawSolution(rtaf); 
-        return;
+        return drawSolution(rtaf);         
     }        
     return rtaf;         
 }
@@ -215,6 +211,8 @@ function drawSolutionPreview(rtaf,strokeColor, strokeWidth, fillColor){
             path.setAttribute('vector-effect', 'non-scaling-stroke' );
             path.setAttribute('stroke-width', strokeWidth );
             path.setAttribute('fill', fillColor ); 
+            path.setAttribute("stroke-linejoin", "round");
+            path.setAttribute("stroke-linecap", "round");
             _hnd['svgHandler'].appendChild( path );          
         }
     }
@@ -222,7 +220,7 @@ function drawSolutionPreview(rtaf,strokeColor, strokeWidth, fillColor){
 
 function drawSolution(rtaf){
     const rpaths = rtaf.split("M");
-    var i, tx='', p='', path=null;
+    var i, tx='', p='', path=null, rta=[];
     for( i=0; i<rpaths.length; i++ ){
         if( rpaths[i].length>3 ){
             p='M'+rpaths[i].toString();
@@ -236,8 +234,10 @@ function drawSolution(rtaf){
             path.setAttribute('fill', colorA ); 
             path.setAttribute('fill-opacity', '0.25' ); 
             _hnd['svgHandler'].appendChild( path ); 
+            rta.push(path);
         }
     }
+    return rta;
     //console.log(rtaf);
     //makeSelection(true);
     //return path;

@@ -1,15 +1,9 @@
 # ArtDraw
 ## SVG editor online - Vector drawing and graphics editor
-![artdraw-svg-editor-online](https://user-images.githubusercontent.com/18316343/231035998-cbb07387-a6f7-4c38-9eed-c6a6248db99b.png)
+![artdraw-svg-editor-online](./art-screenshot.webp)
 
-This project uses javascript, HTML, to create a graphical editor for designing vector images in SVG format.
-This project was not intended for use in NodeJS.
-
-The central idea of the project is to create a simple editor that has a large number of tools that allow creating functional designs, like those made with commercial programs.
-
-The project is in a continuous phase of development, this can be considered the initial version. There are still many tools to be developed, surely bugs to be corrected. This editor works on an SVG object, not Canvas. So the performance is not so perfect, but that doesn't mean it's not usable, or it's not capable of generating complex files. Still try not to abuse the nodes in the SVG paths.
-
-<p vidth="100%" style="text-align: center;"><a href="https://artdraw.org/svg/app.html" target="blank"><img src="https://user-images.githubusercontent.com/18316343/233189401-efef757c-5138-4797-b655-63a46b93b954.png"></a></p>
+**WIP**—refactor Web app editor for vector images in SVG format.  
+This project is a simple editor with most common   features and the possibility to save in local storage.
 
 ## SVG Editor Tools
 

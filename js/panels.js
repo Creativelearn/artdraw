@@ -16,7 +16,7 @@ function btnEditNodesClick(){
     _selector['SELTOOL']="EDITBEZIER";
     HideSelector();
     activateEditNodes();
-    Ayuda("ESC, CTR, ALT Key ==> Exit Node Edit");
+    helpTip("ESC, CTR, ALT Key ==> Exit Node Edit");
   }
   
 };
@@ -51,7 +51,7 @@ function MCKbtnGroupClick(event){
       var tag= document.querySelectorAll(".selectable")[0].tagName;
       var id= document.querySelectorAll(".selectable")[0].id;
       if(tag=="g"){
-        flattenSimple(id);
+        //flattenSimple(id);
         unGroupElements( id, 'cosito selectable' );
         makeSelection(true);
         controlPointZ("ungroup", null, id);
@@ -103,7 +103,7 @@ function fontSelect(event){
   var ff = arrayUrl[arrayUrl.length - 1];
   ff = ff.split(".")[0];
   ff = ff.replace("-", " ");
-  var src="url(https://artdraw.org/svg"+font+")";
+  var src="url(https://artdraw.org/svg"+font+")"; // TODO
 
   var myfont = new FontFace(ff, src );
   myfont.load().then(function(loadedFont) {
@@ -366,7 +366,7 @@ function MCKbtnTraceImageClick(){
       Dialog( "Image to Vectors", "First select an Image to convert to vectors.<br>You can <b>import</b> images from your local drive or from a URL.", "OKI");
       return;
   }
-  document.getElementById("frameTrace").src="https://artdraw.org/svg/trace.html";
+  document.getElementById("frameTrace").src="../trace.html"; // TODO
   showModal("frmTraceDialog");
 }
 

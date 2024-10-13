@@ -15,24 +15,49 @@ SVGElement.prototype.getTransformToElement = SVGElement.prototype.getTransformTo
   // toAbsolute: converts all segments to Absolute
   // dec: number of digits after decimal separator
   // Returns: no return value
-  function flatten(elem, toCubics, toAbsolute, rectAsArgs, dec)
+  function flatten(elem, toCubics, toAbsolute, rectAsArgs, dec, accumulatedTransform)
   {
     if (!elem) return;
     if (typeof (rectAsArgs) == 'undefined') rectAsArgs = false;
     if (typeof (toCubics) == 'undefined') toCubics = false;
     if (typeof (toAbsolute) == 'undefined') toAbsolute = false;
     if (typeof (dec) == 'undefined') dec = false;
+    
+   
 
     if (elem && elem.children && elem.children.length)
     {
+      
+       // Aplicar la acumulación de transformaciones solo si hay una acumulación previa
+        var currentTransform = elem.getAttribute('transform');
+        if(!currentTransform)currentTransform='';
+        if(!accumulatedTransform)accumulatedTransform='';
+
+        var finalTransform =  `${accumulatedTransform} ${currentTransform}`;
+
+    
       for (var i = 0, ilen = elem.children.length; i < ilen; i++)
       {
         //console.log(elem.children[i]);
-        flatten(elem.children[i], toCubics, toAbsolute, rectAsArgs, dec);
+        flatten(elem.children[i], toCubics, toAbsolute, rectAsArgs, dec, finalTransform);
       }
-      elem.removeAttribute('transform');
+      if (!(elem instanceof SVGImageElement)) {
+        elem.removeAttribute('transform');
+      }
       return;
     }
+    
+     if (elem instanceof SVGImageElement) {
+        // Aplicar la transformación acumulada a la imagen (si existe)
+        if (accumulatedTransform ) {
+            var tnow=elem.getAttribute('transform');
+            if(!tnow)tnow='';
+            elem.setAttribute('transform', tnow+' '+accumulatedTransform);
+            accumulatedTransform = '';
+        }
+        return;
+    }
+    
     if (!(elem instanceof SVGCircleElement ||
           elem instanceof SVGRectElement ||
           elem instanceof SVGEllipseElement ||

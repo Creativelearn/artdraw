@@ -831,7 +831,7 @@ function setupMixColor(_idDegreeEditor, _idMixer, _idInputColor, _ulSelector, _a
 
 function drawPalette(_palette){
     var cls='', ttColors=COLORPALETT[_palette].length;
-    cls+="<li mouseUp='openColorPalette' v='0' style='display:block;position:fixed;'><svg style='width:24px;height:24px;color:white;pointer-events:none;' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><polyline points='0,90 50,50 100,90' style='stroke-width:8;stroke:var(--text-color);fill:none;' /><polyline points='0,50 50,10 100,50' style='stroke-width:8;stroke:var(--text-color);fill:none;' /></svg></li>";
+    cls+="<li mouseUp='openColorPalette' v='0' style='display:block;position:fixed;'><svg style='width:16px;height:16px;color:white;margin:4px;padding:2px;pointer-events:none;' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><polyline points='0,90 50,50 100,90' style='stroke-width:8;stroke:var(--text-color);fill:none;' /><polyline points='0,50 50,10 100,50' style='stroke-width:8;stroke:var(--text-color);fill:none;' /></svg></li>";
     cls+="<li mouseUp='applyColorPalette' style='background:none'><svg style='width:24px;height:24px;color:white;pointer-events:none;' viewBox='0 0 75 75' xmlns='http://www.w3.org/2000/svg'><line x1='0' y1='0' x2='75' y2='75' style='stroke-width:8;stroke:black;' /><line x1='0' y1='75' x2='75' y2='0' style='stroke-width:8;stroke:black;' /></svg></li>";
     cls+="<li mouseUp='applyColorPalette' style='background:none'><svg style='width:24px;height:24px;color:white;pointer-events:none;' viewBox='0 0 75 75' xmlns='http://www.w3.org/2000/svg'><line x1='0' y1='0' x2='75' y2='75' style='stroke-width:8;stroke:black;' /><line x1='0' y1='75' x2='75' y2='0' style='stroke-width:8;stroke:black;' /></svg></li>";
     for( var i=0; i<ttColors; i++ ){
@@ -849,12 +849,12 @@ function openColorPalette(event){
     var palette=document.getElementById("colorPalette");
     if(v==0){
         setStyleForID("divPalette", "height", "72px" );
-        setStyleForID("AYUDA", "bottom", "82px" );
+        setStyleForID("helpTip", "bottom", "82px" );
         setStyleForID("infoXY", "bottom", "76px" );
         event.target.setAttribute("v", "1");
     }else{
         setStyleForID("divPalette", "height", "24px" );
-        setStyleForID("AYUDA", "bottom", "20px" );
+        setStyleForID("helpTip", "bottom", "20px" );
         setStyleForID("infoXY", "bottom", "28px" );
         event.target.setAttribute("v", "0");
     }
@@ -959,8 +959,8 @@ function applyColor2element(e, _color, _attr, _opacity){
             if( item.tagName!="g" ){                
                 if( (_attr=="fill" || _attr=="stroke")&& isURL==false ){
                     if(_color=="none"){
-                        item.setAttribute( _attr, "none" );
-                        item.setAttribute( _attr+"-opacity", "1" );
+                        item.setAttribute( _attr, "rgb(0,0,0)" );
+                        item.setAttribute( _attr+"-opacity", "0.000" );
                     }else{
                         var colorOK=parseColor( _color, 'ARRAY' );
                         var opacityOK=colorOK[2]['alpha'];
@@ -1104,7 +1104,7 @@ var skins=[
         document.querySelector("#background-hover").value=theme[2];
         document.querySelector("#text-color-inv").value=theme[3];
         document.querySelector("#border-color").value=theme[4];
-        console.log(theme);
+        //console.log(theme);
     }
     if(event.target.tagName.toLowerCase()=='input'){        
         document.querySelector("body").style.setProperty('--background-color', document.querySelector("#background-color").value );
@@ -1112,7 +1112,7 @@ var skins=[
         document.querySelector("body").style.setProperty('--text-color', document.querySelector("#text-color").value );
         document.querySelector("body").style.setProperty('--text-color-inv', document.querySelector("#text-color-inv").value );
         document.querySelector("body").style.setProperty('--border-color', document.querySelector("#border-color").value );
-        console.log(event.target.value);
+        //console.log(event.target.value);
     }
 
 }

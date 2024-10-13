@@ -5,9 +5,8 @@ function setupListeners(){
     document.addEventListener("dblclick", masterDBLclick, false); 
     _hnd['svgHandler'].addEventListener("mousedown", controllerEventMouseDown, false);
     _hnd['svgHandler'].addEventListener("mousemove", controllerEventMouseMove, false);
-    //$(window).bind('mousewheel DOMMouseScroll', function (event) { controllerEventWheel(event);  }  );
-    window.addEventListener('mousewheel', controllerEventWheel);
-    window.addEventListener('DOMMouseScroll', controllerEventWheel);
+
+
     window.addEventListener("resize", updateRuler);
 
     document.addEventListener('contextmenu', function(evt) { 
@@ -15,7 +14,6 @@ function setupListeners(){
     }, false);
     
     document.onchange = function(evt){
-      //evt = evt || window.event;
       var mck = evt.target.getAttribute("change");
       if( mck!=null)fnCall(mck, evt);
     }
@@ -36,32 +34,65 @@ function setupListeners(){
         //contextMenu.style.visibility = "visible";
         visibilityForSelection(".wrapper", "block");
     });
-    //document.addEventListener("click", () => contextMenu.style.visibility = "hidden");
-
+    setupZoomController();
 }
 
+
 function masterKeyDown(evt){
-    //evt = evt || window.event;     
+    evt = evt || window.event;     
     var ctrlDown = evt.ctrlKey||evt.metaKey; // Mac support
     _evtMsg['keycode']=evt.keyCode;
     if (evt.ctrlKey && evt.keyCode == 90)controlZundo();        // CTRZ Z
-    if (ctrlDown && (evt.keyCode == 67))toClipboard(false);     // CTRL C 
-    if (ctrlDown && (evt.keyCode == 86))pasteClipboard(evt);    // CTRL V
-    if (ctrlDown && (evt.keyCode == 88))toClipboard(true);      // CTRL X
-    if ( evt.keyCode == 33 )MCKapplyZorder(false, "forward");      // PageUP
-    if ( evt.keyCode == 34 )MCKapplyZorder(false, "backward");      // PageDown
-    if (ctrlDown && (evt.keyCode == 71)){evt.preventDefault();MCKbtnGroupClick(true);  }      // CTRL G
-    if (ctrlDown && (evt.keyCode == 80)){evt.preventDefault();OpenImageNewTab(true);  }      // CTRL P
-    if( evt.keyCode == 27 )restoreKeys();                                                     // ESC
-    if( evt.keyCode == 46 )deleteSeleccion();                                                 // DELETE
-    if( evt.keyCode == 113 ){evt.preventDefault(); zoomMore(evt);      }                      // F2 ZoomMore
-    if( evt.keyCode == 114 ){evt.preventDefault(); zoomMinus(evt);      }                     // F3 ZoomMinus        
+    else if (ctrlDown && (evt.keyCode == 67))toClipboard(false);     // CTRL C 
+    else if (ctrlDown && (evt.keyCode == 86))pasteClipboard(evt);    // CTRL V
+    else if (ctrlDown && (evt.keyCode == 88))toClipboard(true);      // CTRL X
+    else if ( evt.keyCode == 33 )MCKapplyZorder(false, "forward");      // PageUP
+    else if ( evt.keyCode == 34 )MCKapplyZorder(false, "backward");      // PageDown
+    else if (ctrlDown && (evt.keyCode == 71)){evt.preventDefault();MCKbtnGroupClick(true);  }      // CTRL G Group/Ungroup
+    else if (ctrlDown && (evt.keyCode == 80)){evt.preventDefault();OpenImageNewTab(true);  }       // CTRL P Print View
+    else if (ctrlDown && (evt.keyCode == 75)){evt.preventDefault();MCKbtnCombineClick();  }        // CTRL K Combine
+    else if( evt.keyCode == 27 )restoreKeys();                                                     // ESC
+    else if( evt.keyCode == 46 )deleteSeleccion();                                                 // DELETE
+    else if( evt.keyCode == 113 ){evt.preventDefault(); zoomMore(evt);      }                      // F2 ZoomMore
+    else if( evt.keyCode == 114 ){evt.preventDefault(); zoomMinus(evt);      }                     // F3 ZoomMinus
+    else if( evt.keyCode == 115 ){evt.preventDefault(); zoomFit();      }                          // F4 ZoomFit    
+    
+    else if (evt.shiftKey && evt.keyCode == 70){evt.preventDefault();copyFillStyle(); }            // Shift F Copy Fill Style
+    else if (evt.altKey && evt.keyCode == 70){evt.preventDefault();pasteFillStyle(); }             // ALT F Paste Fill Style
+    else if (evt.shiftKey && evt.keyCode == 66){evt.preventDefault();copyBorderStyle(); }          // Shift B Copy Border Style
+    else if (evt.altKey && evt.keyCode == 66){evt.preventDefault();pasteBorderStyle(); }           // ALT B Paste Border Style
+
+    //else if ( (ctrlDown || evt.shiftKey) && _evtMsg['zoomController']==false)setupZoomController();
 }
 function masterKeyUp(evt){
   _evtMsg['keycode']=null;
+  if ( _evtMsg['zoomController']==true ){
+    window.removeEventListener('wheel', controllerEventWheel);
+    window.removeEventListener('DOMMouseScroll', controllerEventWheel);
+    _evtMsg['zoomController']=false;
+  }
+}
+
+function setupZoomController(){
+  //https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#improving_scrolling_performance_with_passive_listeners
+  var passiveIfSupported = false;
+  try {
+    window.addEventListener( "test",  null,  Object.defineProperty({}, "passive", {
+        get() { passiveIfSupported = { passive: true }; },
+      })
+    );
+  } catch (err) {}
+
+  window.addEventListener('wheel', controllerEventWheel );  //, { passive: false }
+  window.addEventListener('DOMMouseScroll', controllerEventWheel );   //compatibilidad con firefox  
+  _evtMsg['zoomController']=true;
+}
+function controllerEventWheel(evt){
+  zoom(evt);
 }
 
 function masterClick(evt){
+  //on release
   if( _evtMsg['waitFor']!=null ){
     fnCall(_evtMsg['waitFor'], evt);
     _evtMsg['waitFor']=null;
@@ -81,40 +112,26 @@ function masterDBLclick(evt){
     if( dbck!=null)fnCall(dbck, evt);
 }
 
-/*function controllerEventClick(evt){         //toda el area SVG         
-    drawPolygon(evt,'click');
-}*/
-
 function controllerEventMouseMove(evt){        
-    mouseMoveAreaWork(evt);
-    if( evt.shiftKey){
-      var r=dragScreen(evt, 'move');  
-      if(r==true)return;
-    }    
-    drawSelector(evt, 'move');
-    drawPolygon(evt,'move');  
-}
-
-function controllerEventWheel(evt){
-    zoom(evt);
+  var ctrlDown = evt.ctrlKey||evt.metaKey;  
+  mouseMoveAreaWork(evt);
+  if( ctrlDown || evt.shiftKey || (evt.buttons & 4) === 4  ){
+    var r=dragScreen(evt, 'move');  
+    if(r==true)return;
+  }    
+  drawSelector(evt, 'move');
+  drawPolygon(evt,'move');  
 }
 
 function controllerEventMouseDown(evt){         
-  //contextMenu.style.visibility = "hidden";  
   dragScreen(evt, 'down');
-    drawSelector(evt, 'down');
-    //if(_evtMsg['jxWork']==true && evt.button==2)duplicateSelection(); 
-    var MouseDown = evt.target.getAttribute("MouseDown");
-    if( MouseDown!=null){
-      fnCall(MouseDown, evt);
-      return;
-    }
+  drawSelector(evt, 'down');
+  var MouseDown = evt.target.getAttribute("MouseDown");
+  if( MouseDown!=null){
+    fnCall(MouseDown, evt);
+    return;
+  }
 }
-        
-/*function controllerEventMouseUp(evt){         
-    dragScreen(evt, 'up');
-    drawSelector(evt, 'up');
-}*/
 
 function addListenerFunSelector( _event, _selector, _fun){
   [...document.querySelectorAll(_selector)].forEach((element, index, array) => {

@@ -16,10 +16,12 @@ function MCKbtnHandLineClick(event){
         return;
     }
     
+    restoreKeys(); 
     _selector['SELTOOL']='DRAWHANDLINE';
     _selector['SELTOOLM']='handLine';
     removeClassFromSelection("#divLeftMenu .features-item", "sel");
-    addClassForSelection('#'+event.target.id, "sel");  
+    addClassForSelection('#'+event.target.id, "sel");
+     
     drawHandLine();
 }
 
@@ -58,11 +60,11 @@ function MCKbtnTextClick(event){
     }else{
         if( checkID('imageFonts')==false ){
             var head = document.querySelector('head');
-            var link = '<link id="imageFonts" rel="preload" href="https://artdraw.org/svg/fonts/fonts.webp" as="image">';
+            var link = '<link id="imageFonts" rel="preload" href="../assets/fonts/fonts.webp" as="image">';
             head.insertAdjacentHTML('beforeend', link);
         }
         if( checkID('scriptOpenType')==false ){
-            loadScript('https://artdraw.org/svg/js/opentype.min.js', 'scriptOpenType', function() {
+            loadScript('./js/opentype.min.js', 'scriptOpenType', function() {
                  document.getElementById("preloadScriptOpenType").hide();
                  document.getElementById("drawText").show();
             });

@@ -315,11 +315,29 @@ function drawNode(x, y, type, index, subE, idPath, classN, isRoot, owner ){
     drag(circle);  
     function drag(e){
         e.onmousedown = dragMouseDown;
+        var startDragX, startDragY;
         function dragMouseDown(e) {
             e = e || window.event;
             e.preventDefault();
             document.onmouseup = closeDragElement;
-            document.onmousemove = elementDrag;                        
+            document.onmousemove = elementDrag; 
+            //console.log('click node')   
+            /*startDragX= _evtMsg['mousePOS'].x ;
+            startDragY= _evtMsg['mousePOS'].y;
+            var subNodes=[];
+            if( isRoot==1 ){
+                var els=document.querySelectorAll("circle[owner='"+circle.id+"']" );
+                var cta=0;
+                [...els].forEach((element, index, array) => {
+                    var p=[];
+                    p[0]=element.getAttributeNS(null, 'cx');
+                    p[1]=element.getAttributeNS(null, 'cy');
+                    subNodes.push(p);
+                    cta++;
+                });
+                console.log(subNodes);
+            } */           
+
         }
         function closeDragElement(){
             document.onmouseup = null;
@@ -329,6 +347,11 @@ function drawNode(x, y, type, index, subE, idPath, classN, isRoot, owner ){
         function elementDrag(){
             _evtMsg['isDrawSelector']=false;
             var path = document.getElementById(idPath);
+            var sx=circle.getAttributeNS(null, 'cx' );
+            var sy=circle.getAttributeNS(null, 'cy' );
+            var dx=_evtMsg['mousePOS'].x-sx;
+            var dy=_evtMsg['mousePOS'].y-sy;
+
             circle.setAttributeNS(null, 'cx', _evtMsg['mousePOS'].x);
             circle.setAttributeNS(null, 'cy', _evtMsg['mousePOS'].y);             
             //recalcular el path
@@ -344,6 +367,15 @@ function drawNode(x, y, type, index, subE, idPath, classN, isRoot, owner ){
                     element.setAttributeNS(null, 'x1', _evtMsg['mousePOS'].x);
                     element.setAttributeNS(null, 'y1', _evtMsg['mousePOS'].y); 
                 });
+
+                /*var dx=_evtMsg['mousePOS'].x-startDragX;
+                var dy=_evtMsg['mousePOS'].y-startDragY;
+                var els=document.querySelectorAll("circle[owner='"+circle.id+"']" );
+                [...els].forEach((element, index, array) => {
+                    element.setAttributeNS(null, 'cx', _evtMsg['mousePOS'].x);
+                    element.setAttributeNS(null, 'cy', _evtMsg['mousePOS'].y); 
+                });*/
+
             }else{
                 var els=document.querySelectorAll("line[sOwner='"+circle.id+"']" );
                 [...els].forEach((element, index, array) => {
@@ -675,5 +707,26 @@ function inflexionPoints(_d, step, div){
     }
 }
 
+function reducePathMenu(){
+    var elements = document.querySelectorAll('.cosito.selectable');
+    if( elements.length==0 ){
+        Dialog("Reduce Nodes Tool", "This tool removes unnecessary or redundant nodes, resulting in an object that is easier to manipulate.<br><br><b>To start, select one or more objects</b> to which you want to reduce the nodes", "OK");
+        return;
+    }
+
+    var nnodes=0, nodesIni=countNodes( ".cosito.selectable" );
+    
+    //Confirm(title, msg, $true, $false, funCallback)
+
+    elements.forEach((element) => {
+        if(element.tagName=="path"){
+            controlPointZ("iniDDR", element);
+            reducePath(element.id, true);
+            nnodes+=countNodes( "#"+element.id );
+        }
+        
+    });
+    Dialog("Reduce Nodes Tool", `Before: ${nodesIni} Nodes .<br>After: ${nnodes} Nodes`, "OK");
+}
 
 

@@ -47,7 +47,7 @@ function setupJobSize( _start ){
                 
     }
 
-    if( _workSetup['zeroPos']!=99 ){
+    /*if( _workSetup['zeroPos']!=99 ){
         var nokiX1=-20;
         var nokiX2=40;
         var nokiY1=-20;
@@ -63,11 +63,11 @@ function setupJobSize( _start ){
         
         var arwC=SVGdraw( 'circle', { 'cx':-25, 'cy':-25, 'r':10, stroke:'none','fill':'#5a5ae3','stroke-width':'3','vector-effect':'non-scaling-stroke' });      
         transF.add(arwC);
-    }    
+    } */   
 
     _workSetup['width']=Number(_workSetup['width']);
     _workSetup['height']=Number(_workSetup['height']);
-    if( _workSetup['zeroPos']!=99 ){        // compatibilidad Modo CNC
+    /*if( _workSetup['zeroPos']!=99 ){        // compatibilidad Modo CNC
         if( _workSetup['zeroPos']==2 ){
             transF.x(_workSetup['width']-50);
             flip("transformXY", 1);            
@@ -94,7 +94,7 @@ function setupJobSize( _start ){
         }
     }else{                                  // modo Diseño Grafico
 
-    }
+    }*/
     
     updateRuler();
 }
@@ -171,14 +171,16 @@ function updateRulerTop2( step ){
     }
 
     var ctaL=0 ;
-    var canvasRuleTop = document.getElementById("canvasTop");
+    var canvasRuleTop = document.getElementById("canvasTop");    
     var ctx = canvasRuleTop.getContext("2d");
+    if (!ctx || typeof ctx.reset !== "function")return;
     if(isFF==false){
         ctx.reset();
     }else{
         ctx.clearRect(0, 0, 2000, 60);
     }
-    ctx.font = "12px Arial";
+    ctx.fillStyle = "#abc"
+    ctx.font = "12px system-ui";
     //ctx.fillText( "xxx", offsetX, 10);
     for(var i=0; i<=2000; i+=step){
         var noki=fourCartesian('x', i, 0);
@@ -216,12 +218,14 @@ function updateRulerLeft2( step ){
     var ctaL=0 ;
     var canvasRuleLeft = document.getElementById("canvasLeft");
     var ctx = canvasRuleLeft.getContext("2d");
+    if (!ctx || typeof ctx.reset !== "function")return;
     if(isFF==false){
         ctx.reset();
     }else{
         ctx.clearRect(0, 0, 60, 2000);
     }
-    ctx.font = "12px Arial";
+    ctx.fillStyle = "#abc"
+    ctx.font = "12px system-ui";
     //ctx.fillText( "yyy", offsetY, 10);
     
     for(var i=0; i<=2000; i+=step){
@@ -280,20 +284,8 @@ function zoomMore(event){
         pClickY=center[1];
     }
     removeClassFromSelection("#svgWorkerArea", "wait");
-    
-    var cEvent = new Event('mousewheel');
-    cEvent.detail = 0;
-    cEvent.clientX = pClickX;
-    cEvent.clientY = pClickY;
-    cEvent.wheelDeltaY = 120;
-    cEvent.wheelDeltaX = 0;
-
-    if (cEvent.wheelDeltaY) {
-    cEvent.wheelDelta = 120;
-    } else if (cEvent.wheelDeltaX) {
-    cEvent.wheelDelta = 0;
-    }
-    window.dispatchEvent(cEvent); 
+    var ev={ 'wheelDelta':120, 'wheelDeltaY':120, 'wheelDeltaX':0, 'clientX':pClickX, 'clientY':pClickY, 'detail':0, 'shiftKey':true  };
+    zoom(ev);
 }
 
 function zoomMinus(event){
@@ -306,20 +298,8 @@ function zoomMinus(event){
         pClickY=center[1];
     }
     removeClassFromSelection("#svgWorkerArea", "wait");
-
-    var cEvent = new Event('mousewheel');
-    cEvent.detail = 0;
-    cEvent.clientX = pClickX;
-    cEvent.clientY = pClickY;
-    cEvent.wheelDeltaY = -120;
-    cEvent.wheelDeltaX = 0;
-
-    if (cEvent.wheelDeltaY) {
-    cEvent.wheelDelta = -120;
-    } else if (cEvent.wheelDeltaX) {
-    cEvent.wheelDelta = 0;
-    }
-    window.dispatchEvent(cEvent);
+    var ev={ 'wheelDelta':-120, 'wheelDeltaY':-120, 'wheelDeltaX':0, 'clientX':pClickX, 'clientY':pClickY, 'detail':0, 'shiftKey':true  };
+    zoom(ev);
 }
 function zoomFit(){
     var wDoc=_workSetup['width'];
@@ -339,16 +319,17 @@ function zoomHand(){
 }
     
 function dragScreen(evt, _mode){
-    //console.log("dragScreen mode:"+_mode);
+    var keyOK = evt.ctrlKey||evt.metaKey||evt.shiftKey || (evt.buttons & 4) === 4 ;
+
     if( (_mode=='move' || _mode=='up') && _evtMsg['isDragScreen']==false ){ 
         _evtMsg['isDragScreen']=false; 
         _evtMsg['dragSP']=null; 
         return; 
-    }else if( _mode=='down' && evt.shiftKey && _evtMsg['isDragScreen']==false ){
+    }else if( _mode=='down' && keyOK && _evtMsg['isDragScreen']==false ){
         _evtMsg['dragSP']=cursorPoint(evt, _hnd['awHandler']);
         _evtMsg['isDragScreen']=true;
         return;
-    }else if( _mode=='move' && evt.shiftKey && _evtMsg['isDragScreen']==true ){
+    }else if( _mode=='move' && keyOK && _evtMsg['isDragScreen']==true ){
         var viewbox = _hnd['svgHandler'].getAttributeNS(null, "viewBox").split(" ").map(d => Number(d) || d); 
         viewbox[0]=Number(viewbox[0]);  viewbox[1]=Number(viewbox[1]);  viewbox[2]=Number(viewbox[2]);  viewbox[3]=Number(viewbox[3]);     
         viewbox[0] =parseFloat(viewbox[0]);
@@ -372,11 +353,13 @@ function dragScreen(evt, _mode){
 }  
     
 function zoom(evt){         
-    if(evt.shiftKey==false ){                  //ctrlKey   shiftKey
+    var ctrlDown = evt.ctrlKey||evt.metaKey;
+
+    if( evt.shiftKey==false && ctrlDown==false ){                  //ctrlKey   shiftKey
         //NO Mover el documento
-        return;
+        //return;
     }
-    
+
     var viewbox = _hnd['svgHandler'].getAttributeNS(null, "viewBox").split(" ").map(d => Number(d) || d);
     viewbox[0]=Number(viewbox[0]);  viewbox[1]=Number(viewbox[1]);  viewbox[2]=Number(viewbox[2]);  viewbox[3]=Number(viewbox[3]);
        
@@ -407,7 +390,8 @@ function zoom(evt){
     viewbox[1]=viewbox[1]+descY;
     _hnd['svgHandler'].setAttributeNS(null, "viewBox", viewbox.join(' ') );
     updateRuler();         
-    //Ayuda()
+    //helpTip()
+    //console.log("zoom");
 }
    
 function drawSelector(evt, _mode){
@@ -601,7 +585,7 @@ function drawSelectorEllipse(_mode){
 function drawHandLine(){ 
 //https://stackoverflow.com/questions/40324313/svg-smooth-freehand-drawing   
     var buffer = [];
-    var bufferSize = 12;
+    var bufferSize = _selector['drawHandBuffer'];
     var strPath;
     var path = null;  
 
@@ -758,8 +742,11 @@ function drawPolygon(evt, _mode){
         if( _evtMsg['selectorShapePointsTT']==0 ){
             _evtMsg['selectorShapePoints']='';
             var newID=createID('path');
-            _evtMsg['selectorShapeSVG']=createSVGElement('path', true, newID);                
+            _evtMsg['selectorShapeSVG']=createSVGElement('path', true, newID);  
+            _evtMsg['selectorShapeSVG'].setAttribute('stroke-linejoin', 'round' );
+            _evtMsg['selectorShapeSVG'].setAttribute('stroke-linecap', 'round' );              
             _hnd['svgHandler'].appendChild(_evtMsg['selectorShapeSVG']);
+            
             removeClassFromSelection("#"+newID, "cosito");
             
             removeID('closePoly');
@@ -771,7 +758,7 @@ function drawPolygon(evt, _mode){
             _hnd['svgHandler'].appendChild(bolaClose);
             bolaClose.onclick=closePolyIni;
             
-            Ayuda("Red Point Click: Close Polygon@@ESC, CTR, ALT Key: End Line");
+            helpTip("Red Point Click: Close Polygon@@ESC, CTR, ALT Key: End Line");
         }
         _evtMsg['selectorShapePoints']+=_evtMsg['mousePOS'].x+','+_evtMsg['mousePOS'].y+' ';
         _evtMsg['selectorShapePointsTT']++;           
@@ -808,7 +795,7 @@ function closeDrawPoly(last){
     _selector['SELTOOL']='SELROJO';
     _selector['SELTOOLM']='';
     _evtMsg['selectorShapePointsTT']=0;
-    document.getElementById("AYUDA").style.display="none";
+    document.getElementById("helpTip").style.display="none";
     removeID('closePoly');
     controlPointZ("new", _evtMsg['selectorShapeSVG']);
     _evtMsg['selectorShapeSVG']=null;

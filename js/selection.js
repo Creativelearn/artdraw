@@ -86,7 +86,7 @@ function clickSVG(event){
 
 function makeSelection(properties){       
     if(_evtMsg['isEditNodes']===true)return;
-    if( _selector['SELTOOL']=='DRAWTABS' )return;
+    if( _selector['SELTOOL']=='DRAWTABS' || _selector['SELTOOL']=='DRAWPOLY' )return;
 
     if (typeof properties === 'undefined' || properties===null)properties=false;
     var viewbox = _hnd['svgHandler'].getAttributeNS(null, "viewBox").split(" ");
@@ -381,8 +381,17 @@ function jxStart(){
 function duplicateSelection(_query, _addClass){
     var ids="";
     [...document.querySelectorAll(_query)].forEach((element, index, array) => {
+        var tag=element.tagName;
         var etmp=element.cloneNode(true);
         var newID=createID('path');
+        if(tag=='g'){
+            var newID=createID('group');
+            [...etmp.querySelectorAll('.grouped')].forEach((element, index, array) => {
+                var subID=createID('path');
+                element.id=subID;
+                console.log(element.id);
+            });
+        }
         etmp.id=newID;
         if(_addClass!=null && _addClass!='undefined'){
             etmp.classList.add(_addClass);            
@@ -571,8 +580,37 @@ function controlZundo(){
         if(els[i].txt!=null){            
             //console.log("quito==> "+e.outerHTML  );
             //console.log("pongo==> "+els[i].txt  );
-            removeID(id);
-            _hnd['svgHandler'].insertAdjacentHTML( "beforeend", els[i].txt );
+            //removeID(id);
+            //_hnd['svgHandler'].insertAdjacentHTML( "beforeend", els[i].txt );
+
+            var parser = new DOMParser();
+            var doc = parser.parseFromString(els[i].txt, 'image/svg+xml');
+            var Zelement = doc.firstChild;
+            var fill = Zelement.getAttribute('fill');
+            if(fill)e.setAttribute('fill', fill);
+            var fillOpacity = Zelement.getAttribute('fill-opacity');
+            if(fillOpacity)e.setAttribute('fill-opacity', fillOpacity);
+            var stroke = Zelement.getAttribute('stroke');
+            if(stroke)e.setAttribute('stroke', stroke);
+            var strokeOpacity = Zelement.getAttribute('stroke-opacity');
+            if(strokeOpacity)e.setAttribute('stroke-opacity', strokeOpacity);
+            var strokeWhidth = Zelement.getAttribute('stroke-width');
+            if(strokeWhidth)e.setAttribute('stroke-width', strokeWhidth);
+            var transform = Zelement.getAttribute('transform');
+            if(transform)e.setAttribute('transform', transform);
+            var d = Zelement.getAttribute('d');
+            if(d)e.setAttribute('d', d);
+
+            var strokelinejoin = Zelement.getAttribute('stroke-linejoin');
+            if(strokelinejoin)e.setAttribute('stroke-linejoin', strokelinejoin);
+            var strokelinecap = Zelement.getAttribute('stroke-linecap');
+            if(strokelinecap)e.setAttribute('stroke-linecap', strokelinecap);
+            var paintorder = Zelement.getAttribute('paint-order');
+            if(paintorder)e.setAttribute('paint-order', paintorder);
+            var vectoreffect = Zelement.getAttribute('vector-effect');
+            if(vectoreffect)e.setAttribute('vector-effect', vectoreffect);
+            var filter = Zelement.getAttribute('filter');
+            if(filter)e.setAttribute('filter', filter);
         }
         if(els[i].gradFill!=null){    restoreDegree(els[i].fill, els[i].gradFill)  }
         if(els[i].gradStroke!=null){  restoreDegree(els[i].stroke, els[i].gradStroke)  }
@@ -938,13 +976,34 @@ function changeBackgroundGenerator(event){
     if( v==0 ) {
         visibilityForSelection("#tbConfigWaves", 'table');
         visibilityForSelection("#tbConfigMandala", 'none');
+        visibilityForSelection("#tbConfigTree", 'none');
     }
     if( v==1 ) {
         visibilityForSelection("#tbConfigWaves", 'none');
         visibilityForSelection("#tbConfigMandala", 'table');
+        visibilityForSelection("#tbConfigTree", 'none');
+    }
+    if( v==2 ) {
+        visibilityForSelection("#tbConfigWaves", 'none');
+        visibilityForSelection("#tbConfigMandala", 'none');
+        visibilityForSelection("#tbConfigTree", 'table');
     }
     removeAllFromSelection(".preview");
     mandalaLayerSaveConfig();
+}
+
+function genTreeNature(){
+    var steps=document.getElementById("genTreeSteps").value;
+    var angle=document.getElementById("genTreeAngle").value;    
+    var starAngle=document.getElementById("genTreeStarAngle").value;
+    var base=document.getElementById("genTreeBase").value;
+    var maxBranch=document.getElementById("genTreeBranchs").value;
+    var checkbox = document.getElementById("genTreeUseLeave");
+    var isChecked = checkbox.checked;
+
+    var seed=document.getElementById("genTreeSeed").value;
+
+    drawTreeA(steps, angle, starAngle, base, maxBranch,  666, 666, 0, 0, 0, seed, isChecked);
 }
 
 function changeLayerMandala(event){

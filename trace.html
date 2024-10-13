@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-">
+<script src="./js/imagetracer_v1.2.6.js"></script>
+<style>
+            html,body{font-family:poppins,sans-serif;}
+            table td{text-align: center;}
+            /*table td input{width:100%}*/
+            .ttxs{font-size:18px;text-align:center;}
+            .ttxt{font-size:12px;text-align:center;}
+            .w16{width:16%;}
+            .w32{width:64px;}
+            .tc{font-size:14px;}
+        </style>
+</head>
+<body style="height:100%;width:100%;overflow-x:hidden;">
+<table style="width:100%;margin-bottom:12px;">
+<tr>
+<td style="width:50%;text-align:center;"> <span class="ttxs">Original Image</span> </td>
+<td style="width:50%;text-align:center;"> <span class="ttxs">Trace Output</span> <span class="ttxt" id="svgInfo"></span> </td>
+</tr>
+<tr>
+<td style="width:50%;text-align:center;"><img id="imgForTrace" style="width:100%;max-width:100%" src></td>
+<td style="width:50%;text-align:center;"><img id="imgSVG" style="width:100%;max-width:100%" src></td>
+</tr>
+<tr>
+<td style="width:50%;text-align:center;">
+<select name="optionpresets" id="optionpresets" onchange="showCustom();">
+<option value="posterized1">Posterized1</option>
+<option value="posterized2">Posterized2</option>
+<option value="curvy">Curvy</option>
+<option value="sharp">Sharp</option>
+<option value="detailed">Detailed</option>
+<option value="smoothed">Smoothed</option>
+<option value="grayscale">Grayscale</option>
+<option value="fixedpalette">Fixedpalette</option>
+<option value="randomsampling1">RandomSampling1</option>
+<option value="randomsampling2">RandomSampling2</option>
+<option value="artistic1">Artistic1</option>
+<option value="artistic2">Artistic2</option>
+<option value="artistic3">Artistic3</option>
+<option value="artistic4">Artistic4</option>
+<option value="posterized3">Posterized3</option>
+<option value="custom" onchange="showCustom();">Custom</option>
+</select>
+</td>
+<td style="width:50%;text-align:center;">
+<input type="button" value="Trace Image" onClick="traceImage();"> &nbsp;
+<input id="importTraced" type="button" value="Import Image Traced" onClick="importTraced();" style="display:none;">
+</td>
+</tr>
+<tr id="customStyles" style="display:none;">
+<td colspan="2">
+<table border="1" style="border-collapse:collapse;width:98%;" id="customTB">
+<tr>
+<td class="w16"><span class="tc">Ltres</span> </td>
+<td class="w16"><span class="tc">Qtres</span> </td>
+<td class="w16"><span class="tc">Pathomit</span> </td>
+<td class="w16"><span class="tc">Enhance</span> </td>
+<td class="w16"><span class="tc">Color Sampling</span> </td>
+<td class="w16"><span class="tc">#Colors</span> </td>
+</tr>
+<tr>
+<td><input class="w32" type="number" id="ltres" min="0.005" max="16" step="0.001" value="1"></td>
+<td><input class="w32" type="number" id="qtres" min="0.005" max="16" step="0.001" value="1"></td>
+<td><input class="w32" type="range" id="pathomit" min="0" max="64" step="1" value="8"></td>
+<td>
+<select id="colorsampling" style="width:86px;">
+<option value="0">Generate Palette</option>
+<option value="1">Random Sampling</option>
+<option value="2">Deterministic Sampling</option>
+</select>
+</td>
+<td>
+<select id="rightangleenhance" style="width:86px;">
+<option value="true">True</option>
+<option value="false">False</option>
+</select>
+</td>
+<td><input class="w32" type="range" id="numberofcolors" min="2" max="128" step="1" value="16"></td>
+</tr>
+<tr>
+<td class="w16"><span class="tc">Color Ratio</span> </td>
+<td class="w16"><span class="tc">Color Cycles</span> </td>
+<td class="w16"><span class="tc">Line Filter</span> </td>
+<td class="w16"><span class="tc">Blur Radius</span> </td>
+<td class="w16"><span class="tc">Blur Delta</span> </td>
+<td class="w16"><span class="tc"></span> </td>
+</tr>
+<tr>
+<td><input class="w32" type="range" id="mincolorratio" min="0" max="8" step="1" value="0"></td>
+<td><input class="w32" type="range" id="colorquantcycles" min="1" max="16" step="1" value="3"></td>
+<td>
+<select id="linefilter" style="width:86px;">
+<option value="true">True</option>
+<option value="false">False</option>
+</select>
+</td>
+<td><input class="w32" type="range" id="blurradius" min="0" max="32" step="1" value="0"></td>
+<td><input class="w32" type="range" id="blurdelta" min="0" max="256" step="1" value="20"></td>
+<td></td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</body>
+<script>
+        var dataimg=window.parent.callBackTrace();
+        var endSVG='';
+        document.getElementById('imgForTrace').src=dataimg;
+
+        function traceImage(){
+            var style=document.getElementById('optionpresets').value;
+            if( style=="custom"){
+                var ltres=document.getElementById('ltres').value;
+                var qtres=document.getElementById('qtres').value;
+                var pathomit=document.getElementById('pathomit').value;
+                var colorsampling=document.getElementById('colorsampling').value;
+                var numberofcolors=document.getElementById('numberofcolors').value;                
+                var mincolorratio=document.getElementById('mincolorratio').value;
+                var colorquantcycles=document.getElementById('colorquantcycles').value;
+                var blurradius=document.getElementById('blurradius').value;
+                var blurdelta=document.getElementById('blurdelta').value;
+
+                var rightangleenhance=eval( document.getElementById('rightangleenhance').value );
+                var linefilter=eval( document.getElementById('linefilter').value );
+
+                style={
+                    corsenabled : false,
+                    ltres : ltres,
+                    qtres : qtres,
+                    pathomit : pathomit,
+                    rightangleenhance : rightangleenhance,
+                    colorsampling : colorsampling,
+                    numberofcolors : numberofcolors,
+                    mincolorratio : mincolorratio,
+                    colorquantcycles : colorquantcycles,
+                    layering : 0,
+                    strokewidth : 1,
+                    linefilter : false,
+                    scale : 1,
+                    roundcoords : 1,
+                    viewbox : false,
+                    desc : false,
+                    lcpr : 0,
+                    qcpr : 0,
+                    blurradius : blurradius,
+                    blurdelta : blurradius			
+                };
+            }
+
+            var foto=document.getElementById('imgForTrace').src;
+            ImageTracer.imageToSVG(
+                foto,
+                function(svgstr){  
+                    document.getElementById('imgSVG').setAttribute('src','data:image/svg+xml;base64,'+btoa(svgstr));
+                    document.getElementById('svgInfo').innerHTML = "("+ImageTracer.totalPaths+" Paths, "+ImageTracer.totalNodes+" Nodes)";
+                    endSVG=ImageTracer.pathStr;
+                    document.getElementById('importTraced').style.display =''; 
+                    //console.log(endSVG); 
+                },
+                style
+			);
+        }
+
+        function importTraced(){
+            window.parent.drawImageTrace(endSVG);
+        }
+
+        function showCustom(){
+            var style=document.getElementById('optionpresets').value;
+            if( style=='custom'){
+                document.getElementById('customStyles').style.display =''; 
+            }else{
+                document.getElementById('customStyles').style.display ='none'; 
+            }
+            //console.log("style:"+style);
+        }
+
+    </script>
+</html>
